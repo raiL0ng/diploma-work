@@ -3,28 +3,46 @@ from math import sqrt
 # Класс, содержащий информацию о каком-либо пакете
 class PacketInf:
 
-  def __init__( self, numPacket, timePacket, packetSize, mac_src, mac_dest, protoType
-              , ip_src, ip_dest, port_src, port_dest, len_data, seq=None, ack=None
-              , fl_ack=None, fl_psh=None, fl_rst=None, fl_syn=None, fl_fin=None):
-    self.numPacket = int(numPacket)
-    self.timePacket = float(timePacket)
-    self.packetSize = int(packetSize)
-    self.mac_src = mac_src
-    self.mac_dest = mac_dest
-    self.protoType = protoType
-    self.ip_src = ip_src
-    self.ip_dest = ip_dest
-    self.port_src = port_src
-    self.port_dest = port_dest
-    self.len_data = int(len_data)
-    self.seq = seq
-    self.ack = ack
-    self.fl_ack = fl_ack
-    self.fl_psh = fl_psh
-    self.fl_rst = fl_rst
-    self.fl_syn = fl_syn
-    self.fl_fin = fl_fin
+  def __init__(self):
+      self.numPacket = None
+      self.timePacket = None
+      self.packetSize = None
+      self.mac_src = None
+      self.mac_dest = None
+      self.protoType = None
+      self.ip_src = None
+      self.ip_dest = None
+      self.port_src = None
+      self.port_dest = None
+      self.len_data = None
+      self.seq = None
+      self.ack = None
+      self.fl_ack = None
+      self.fl_psh = None
+      self.fl_rst = None
+      self.fl_syn = None
+      self.fl_fin = None
 
+  def set_data_from_list(self, lst):
+      self.numPacket = int(lst[0])
+      self.timePacket = float(lst[1])
+      self.packetSize = int(lst[2])
+      self.mac_src = lst[3]
+      self.mac_dest = lst[4]
+      self.protoType = lst[5]
+      self.ip_src = lst[6]
+      self.ip_dest = lst[7]
+      self.port_src = lst[8]
+      self.port_dest = lst[9]
+      self.len_data = int(lst[10])
+      if self.protoType == 'TCP':
+          self.seq = lst[11]
+          self.ack = lst[12]
+          self.fl_ack = lst[13]
+          self.fl_psh = lst[14]
+          self.fl_rst = lst[15]
+          self.fl_syn = lst[16]
+          self.fl_fin = lst[17]
 
 # Класс, содержащий информацию относительно какого-либо IP-адреса
 class ExploreObject:
@@ -92,26 +110,26 @@ class Session:
 
 # Обновление значения порядкового номера
   def upd_seq_num(self, seq):
-    self.seq_num = int(seq)
+      self.seq_num = int(seq)
 
 
 # Обновление значения номера подтверждения
   def upd_ack_num(self, ack):
-    self.ack_num = ack
+      self.ack_num = ack
 
 
 # Обновление значения флага FIN
   def upd_fl_fin(self, fin):
-    self.fl_fin = True
-    self.finTime = fin
-    self.totalTime = round(self.finTime - self.strtTime, 2)
+      self.fl_fin = True
+      self.finTime = fin
+      self.totalTime = round(self.finTime - self.strtTime, 2)
 
 
 # Обновление значения флага RST
   def upd_fl_rst(self, fin):
-    self.fl_rst = True
-    self.finTime = fin
-    self.totalTime = round(self.finTime - self.strtTime, 2)
+      self.fl_rst = True
+      self.finTime = fin
+      self.totalTime = round(self.finTime - self.strtTime, 2)
 
 
 # Вычисление распределений для выявления признаков RDP 

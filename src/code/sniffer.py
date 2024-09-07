@@ -1,15 +1,16 @@
-import socket, struct, keyboard
+import socket, struct, keyboard, os
 from time import time
-from variable_definition import Packet_list
-from common_methods import find_session_location, clear_end_sessions, print_packet_inf
+from variable_definition import Packet_list, line, Phrases_signs
+from common_methods import find_session_location, clear_end_sessions, write_to_file
 from package_parameters import PacketInf
 
 
-class SnifferRDP:
+class Sniffer:
 
     def __init__(self) -> None:
-        # для UNIX систем
-        self.connection = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+        self.connection = None
+        self.findRDP = False
+
 
     # Получение ethernet-кадра
     def get_ethernet_frame(self, data):
@@ -60,16 +61,39 @@ class SnifferRDP:
             data = ''.join(r'\x{:02x}'.format(el) for el in data)
         return data
 
+    # Вывод информации о перехваченных пакетах
+    def print_packet_information(self, obj, mes_prob):
+        if self.findRDP:
+            if 5 not in mes_prob[0] or mes_prob[1] <= 50:
+                return
+        print( f'{line}Пакет No{obj.numPacket}{line}\n'
+             , 'Время перехвата: '
+             , time.strftime( '%m:%d:%Y %H:%M:%S'
+                            , time.localtime(obj.timePacket) ) + '\n'
+             , f'Протокол: {obj.protoType}\n'
+             , f'MAC-адрес отправителя: {obj.mac_src}\n'
+             , f'MAC-адрес получателя: {obj.mac_dest}\n'
+             , f'Отправитель: {obj.ip_src}:{obj.port_src}\n'
+             , f'Получатель: {obj.ip_dest}:{obj.port_dest}')
+        if obj.protoType == 'TCP':
+            print( f' Порядковый номер: {obj.seq}; Номер подтверждения: {obj.ack}\n' +
+                f' SYN:{obj.fl_syn}; ACK:{obj.fl_ack}; PSH:{obj.fl_psh}; ' +
+                f'RST:{obj.fl_rst}; FIN:{obj.fl_fin}\n')
+        print('Признаки: ', end='')
+        for i in mes_prob[0]:
+            print(Phrases_signs[i], end='; ')
+        print(f'\nВероятность RDP-сессии {mes_prob[1]}%')
+
 
     # Перехват трафика и вывод информации в консоль
     def start_to_listen(self):
         global Packet_list
         NumPacket = 1
         curcnt = 1000
+        pinf = [''] * 18
         while True:
             # Получение пакетов в виде набора hex-чисел
             raw_data, _ = self.connection.recvfrom(65565)
-            pinf = [''] * 18
             pinf[0], pinf[1] = NumPacket, time()
             pinf[2] = len(raw_data)
             # Если это интернет-протокол четвертой версии    
@@ -85,12 +109,9 @@ class SnifferRDP:
                     pinf[5] = 'UDP'
                     pinf[8], pinf[9], _, data_udp = self.get_udp_segment(data_ipv4)
                     pinf[10] = len(data_udp)
-                    Packet_list.append(PacketInf( pinf[0], pinf[1], pinf[2]
-                                                , pinf[3], pinf[4], pinf[5]
-                                                , pinf[6], pinf[7], pinf[8]
-                                                , pinf[9], pinf[10]))
+                    Packet_list.append(PacketInf().set_data_from_list(pinf))
                     mes_prob = find_session_location(Packet_list[-1])
-                    print_packet_inf(Packet_list[-1], mes_prob)
+                    self.print_packet_information(Packet_list[-1], mes_prob)
                 # Если это TCP-протокол  
                 if proto == 6:
                     NumPacket += 1
@@ -103,14 +124,35 @@ class SnifferRDP:
                     pinf[15] = str((flags & 4) >> 2)
                     pinf[16] = str((flags & 2) >> 1)
                     pinf[17] = str(flags & 1)
-                    Packet_list.append(PacketInf( pinf[0], pinf[1], pinf[2], pinf[3]
-                                                , pinf[4], pinf[5], pinf[6], pinf[7]
-                                                , pinf[8], pinf[9], pinf[10], pinf[11]
-                                                , pinf[12], pinf[13], pinf[14], pinf[15]
-                                                , pinf[16], pinf[17] ))
+                    Packet_list.append(PacketInf().set_data_from_list(pinf))
                     mes_prob = find_session_location(Packet_list[-1])
-                    print_packet_inf(Packet_list[-1], mes_prob)
+                    self.print_packet_information(Packet_list[-1], mes_prob)
             if keyboard.is_pressed('space'):
                 self.connection.close()
                 print('\nЗавершение программы...\n')
                 break
+
+
+    # Определение параметров перехвата трафика
+    def traffic_interception(self):
+        try:
+            print('Поставить фильтр RDP? (Если да, то введите 1)')
+            fl = input('Ответ: ')
+            if fl == '1':
+                self.findRDP = True
+            print('\nВыберите сетевой интерфейс, нажав соответствующую цифру:')
+            print(socket.if_nameindex())
+            interface = int(input())
+            if 0 > interface or interface > len(socket.if_nameindex()):
+                print('\nОшибка ввода!!!\n')
+                return
+            os.system(f'ip link set {socket.if_indextoname(interface)} promisc on')
+            self.connection = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+        except PermissionError:
+            print('\nНедостаточно прав!')
+            print('Запустите программу от имени администратора!')
+        else:
+            print('\nНачался процесс захвата трафика...\n')
+            self.start_to_listen()
+        print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')
+        write_to_file()

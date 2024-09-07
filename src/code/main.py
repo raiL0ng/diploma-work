@@ -1,8 +1,8 @@
 import socket, os
 from variable_definition import Packet_list, Object_list, Labels_list, Session_list, findRDP
-from common_methods import read_from_file, find_session_location, clear_end_sessions, print_inf_about_sessions
+from common_methods import read_from_file, write_to_file, clear_end_sessions, print_inf_about_sessions, get_common_data
 from package_parameters import ExploreObject
-
+from sniffer import Sniffer
 
 # Выбор опции (меню)
 def choose_mode():
@@ -20,82 +20,15 @@ def choose_mode():
       Labels_list.clear()
       Session_list.clear()
       findRDP = False
-      print('Поставить фильтр RDP? (Если да, то введите 1)')
-      fl = input('Ответ: ')
-      if fl == '1':
-        findRDP = True
-      try:
-        print('\nВыберите сетевой интерфейс, нажав соответствующую цифру:')
-        print(socket.if_nameindex())
-        interface = int(input())
-        if 0 > interface or interface > len(socket.if_nameindex()):
-          print('\nОшибка ввода!!!\n')
-          return
-        os.system(f'ip link set {socket.if_indextoname(interface)} promisc on')
-        s_listen = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
-      except PermissionError:
-        print('\nНедостаточно прав!')
-        print('Запустите программу от имени администратора!')
-        return
-      else:
-        print('\nНачался процесс захвата трафика...\n')
-        start_to_listen(s_listen)
-      print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')
-
-      print('\nХотите записать перехваченный трафик в файл? (да - нажмите 1)')
-      bl1 = input('Ответ: ')
-      if '1' in bl1:
-        print('Введите название файла (например: data.log)')
-        FileName = input()
-        try:
-          f = open(FileName, 'w')
-        except:
-          print('\nНекорректное название файла!\n')
-          continue
-        if write_to_file(f):
-          print(f'\nВ файл {FileName} была успешна записана информация.\n')
-          f.close()
-        else:
-          print(f'\nОшибка записи в файл {FileName}! Возможно нет данных для записи\n')
-          f.close()
-      print('')
+      Sniffer().traffic_interception()
     elif bl == '2':
-      if Packet_list == []:
-        print('\nНет данных! Сначала необходимо получить данные!\n')
-        continue
-      print('Введите название файла (например: data.log)')
-      FileName = input()
-      try:
-        f = open(FileName, 'w')
-      except:
-        print('\nНекорректное название файла!\n')
-        continue
-      if write_to_file(f):
-        print(f'\nВ файл {FileName} была успешна записана информация.\n')
-        f.close()
-      else:
-        print(f'\nОшибка записи в файл {FileName}! Возможно нет данных для записи...\n')
-        f.close()
-        continue
+      write_to_file()
     elif bl == '3':
       Packet_list.clear()
       Object_list.clear()
       Labels_list.clear()
       Session_list.clear()
-      print('Введите название файла (например: data.log)')
-      FileName = input()
-      if not Packet_list:
-        try:
-          f = open(FileName, 'r')
-        except:
-          print('\nНекорректное название файла!\n')
-          continue
-        while True:
-          inf = f.readline()
-          if not inf:
-            break
-          read_from_file(inf)
-        f.close()
+      read_from_file()
       print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')
     elif bl == '4':
       if Packet_list == []:

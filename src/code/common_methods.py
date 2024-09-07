@@ -1,24 +1,29 @@
 import time
-from variable_definition import Packet_list, Session_list, findRDP, line
+from colorama import init, Back, Fore
+from variable_definition import Packet_list, Session_list, Labels_list, line
+from package_parameters import PacketInf
+
+
+init(autoreset=True)
 
 
 # Обработка значений списка Session_list
 def clear_end_sessions():
-  global Session_list
-  n = len(Session_list)
-  ids = []
-  for i in range(n):
-    if Session_list[i].fl_fin or Session_list[i].fl_rst:
-      if Session_list[i].totalTime < 10:
-        ids.append(i)
-  tmp = Session_list.copy()
-  Session_list.clear()
-  for i in range(n):
-    if i in ids:
-      continue  
-    Session_list.append(tmp[i])
-  for s in Session_list:
-    s.get_rdp_features(Packet_list[-1], True)
+    global Session_list
+    n = len(Session_list)
+    ids = []
+    for i in range(n):
+        if Session_list[i].fl_fin or Session_list[i].fl_rst:
+          if Session_list[i].totalTime < 10:
+            ids.append(i)
+    tmp = Session_list.copy()
+    Session_list.clear()
+    for i in range(n):
+        if i in ids:
+          continue  
+        Session_list.append(tmp[i])
+    for s in Session_list:
+        s.get_rdp_features(Packet_list[-1], True)
 
 
 # Нахождение активных сессий
@@ -131,75 +136,95 @@ def print_inf_about_sessions():
 
 
 # Запись информации о пакетах в файл
-def write_to_file(f):
-  if Packet_list == []:
-    return False
-  try:
-    for obj in Packet_list:
-      if obj.protoType == 'UDP':
-        f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
-                 f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
-                 f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
-                 f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};!\n' )
-      else:
-        f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
-                 f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
-                 f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
-                 f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};Seq:{obj.seq};' +
-                 f'Ack:{obj.ack};Fl-ack:{obj.fl_ack};Fl-psh:{obj.fl_psh};' +
-                 f'Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};Fl-fin:{obj.fl_fin};!\n' )
-  except:
-      return False
-  return True
+def write_to_file():
+    print('Введите название файла (например: data.log)')
+    FileName = input()
+    try:
+        f = open(FileName, 'w')
+    except:
+        print('\nНекорректное название файла!\n')
+    else:
+        if Packet_list == []:
+            return
+        try:
+            for obj in Packet_list:
+                if obj.protoType == 'UDP':
+                    f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
+                             f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
+                             f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
+                             f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};!\n' )
+                else:
+                    f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
+                             f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
+                             f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
+                             f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};Seq:{obj.seq};' +
+                             f'Ack:{obj.ack};Fl-ack:{obj.fl_ack};Fl-psh:{obj.fl_psh};' +
+                             f'Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};Fl-fin:{obj.fl_fin};!\n' )
+            print(f'\nВ файл {FileName} была успешна записана информация.\n')
+            f.close()
+        except:
+            print(f'\nОшибка записи в файл {FileName}! Возможно нет данных для записи\n')
+            f.close()
+
+
+# Обработка строки с данными
+def row_processing(inf):
+    data = []
+    while True:
+        beg = inf.find(':')
+        end = inf.find(';')
+        if beg == -1 and end == -1:
+            break
+        else:
+            data.append(inf[beg + 1: end])
+        inf = inf[end + 1:]
+    return PacketInf().set_data_from_list(data)
 
 
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
-def read_from_file(inf):
-  global Packet_list
-  a = []
-  while True:
-    beg = inf.find(':')
-    end = inf.find(';')
-    if beg == -1 and end == -1:
-      break
-    else:
-      a.append(inf[beg + 1: end])
-    inf = inf[end + 1:]
-  try:
-    if a[5] == 'TCP':
-      Packet_list.append(PacketInf( a[0], a[1], a[2], a[3], a[4], a[5]
-                                  , a[6], a[7], a[8], a[9], a[10], a[11]
-                                  , a[12], a[13], a[14], a[15], a[16], a[17] ))
-      _ = find_session_location(Packet_list[-1])
-    elif a[5] == 'UDP':
-      Packet_list.append(PacketInf( a[0], a[1], a[2], a[3], a[4], a[5]
-                                  , a[6], a[7], a[8], a[9], a[10] ))
-      _ = find_session_location(Packet_list[-1])
-  except:
-    print('Ошибка при считывании файла...')
-    exit(0)
+def read_from_file():
+    global Packet_list
+    print('Введите название файла (например: data.log)')
+    FileName = input()
+    if Packet_list:
+        return
+    try:
+        with open(FileName, 'r') as f:
+            while True:
+                inf = f.readline()
+                if not inf:
+                    break
+                Packet_list.append(row_processing(inf))
+                _ = find_session_location(Packet_list[-1])
+    except:
+        print(f'\nОшибка считывания файла {FileName}!\n')
 
 
-# Вывод информации о перехваченных пакетах
-def print_packet_inf(obj, mes_prob):
-  if findRDP:
-    if 5 not in mes_prob[0] or mes_prob[1] <= 50:
-      return
-  print( f'{line}Пакет No{obj.numPacket}{line}\n'
-       , 'Время перехвата: '
-       , time.strftime( '%m:%d:%Y %H:%M:%S'
-                      , time.localtime(obj.timePacket) ) + '\n'
-       , f'Протокол: {obj.protoType}\n'
-       , f'MAC-адрес отправителя: {obj.mac_src}\n'
-       , f'MAC-адрес получателя: {obj.mac_dest}\n'
-       , f'Отправитель: {obj.ip_src}:{obj.port_src}\n'
-       , f'Получатель: {obj.ip_dest}:{obj.port_dest}')
-  if obj.protoType == 'TCP':
-    print( f' Порядковый номер: {obj.seq}; Номер подтверждения: {obj.ack}\n' +
-           f' SYN:{obj.fl_syn}; ACK:{obj.fl_ack}; PSH:{obj.fl_psh}; ' +
-           f'RST:{obj.fl_rst}; FIN:{obj.fl_fin}\n')
-  print('Признаки: ', end='')
-  for i in mes_prob[0]:
-    print(Phrases_signs[i], end='; ')
-  print(f'\nВероятность RDP-сессии {mes_prob[1]}%')
+# Получение общей информации о текущей
+# попытке перехвата трафика
+def get_common_data():
+  global Labels_list
+  Labels_list.clear()
+  IPList = set()
+  numPacketsPerSec = []
+  curTime = Packet_list[0].timePacket + 1
+  fin = Packet_list[-1].timePacket + 1
+  Labels_list.append(time.strftime('%H:%M:%S', time.localtime(Packet_list[0].timePacket)))
+  cntPacket = 0
+  i = 0
+  while curTime < fin:
+    for k in range(i, len(Packet_list)):
+      if Packet_list[k].timePacket > curTime:
+        numPacketsPerSec.append(cntPacket)
+        Labels_list.append(time.strftime('%H:%M:%S', time.localtime(curTime)))
+        cntPacket = 0
+        i = k
+        break
+      cntPacket += 1
+    curTime += 1
+  numPacketsPerSec.append(cntPacket)
+  for p in Packet_list:
+    IPList.add(p.ip_src)
+    IPList.add(p.ip_dest)
+  return list(IPList), numPacketsPerSec
