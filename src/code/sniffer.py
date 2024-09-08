@@ -1,8 +1,9 @@
 import socket, struct, keyboard, os
 from time import time
 from variable_definition import Packet_list, line, Phrases_signs
-from common_methods import find_session_location, clear_end_sessions, write_to_file
+from common_methods import write_to_file
 from package_parameters import PacketInf
+from session_creation import SessionInitialization
 
 
 class Sniffer:
@@ -91,6 +92,7 @@ class Sniffer:
         NumPacket = 1
         curcnt = 1000
         pinf = [''] * 18
+        si = SessionInitialization()
         while True:
             # Получение пакетов в виде набора hex-чисел
             raw_data, _ = self.connection.recvfrom(65565)
@@ -102,7 +104,7 @@ class Sniffer:
                 _, proto, pinf[6], pinf[7], data_ipv4 = self.get_ipv4_data(raw_data[14:])
                 if NumPacket > curcnt:
                     curcnt += 1000
-                    clear_end_sessions() 
+                    si.clear_end_sessions() 
                 # Если это UDP-протокол  
                 if proto == 17:
                     NumPacket += 1
@@ -110,7 +112,7 @@ class Sniffer:
                     pinf[8], pinf[9], _, data_udp = self.get_udp_segment(data_ipv4)
                     pinf[10] = len(data_udp)
                     Packet_list.append(PacketInf().set_data_from_list(pinf))
-                    mes_prob = find_session_location(Packet_list[-1])
+                    mes_prob = si.find_session_location(Packet_list[-1])
                     self.print_packet_information(Packet_list[-1], mes_prob)
                 # Если это TCP-протокол  
                 if proto == 6:
@@ -125,7 +127,7 @@ class Sniffer:
                     pinf[16] = str((flags & 2) >> 1)
                     pinf[17] = str(flags & 1)
                     Packet_list.append(PacketInf().set_data_from_list(pinf))
-                    mes_prob = find_session_location(Packet_list[-1])
+                    mes_prob = si.find_session_location(Packet_list[-1])
                     self.print_packet_information(Packet_list[-1], mes_prob)
             if keyboard.is_pressed('space'):
                 self.connection.close()

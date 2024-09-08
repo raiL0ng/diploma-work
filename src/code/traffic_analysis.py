@@ -2,7 +2,7 @@ import time
 from variable_definition import Packet_list, Object_list, Labels_list, Session_list
 from session_creation import SessionInitialization, Session
 from package_parameters import ExploreObject
-
+from chart_creation import ChartCreation
 
 class TrafficAnalysis:
 
@@ -97,7 +97,6 @@ class TrafficAnalysis:
         for p in Packet_list:
             avgSizePacket += p.packetSize
         avgSizePacket /= len(Packet_list)
-        # step = get_x_labels(int(fin - strt))
         print('Общая информация:')
         print( 'Время первого перехваченного пакета: '
              , time.strftime('%d.%m.%Y г. %H:%M:%S', strt_time) )
@@ -140,7 +139,7 @@ class TrafficAnalysis:
                     if 0 <= k1 and k1 <= t:
                         if k1 != 0:
                             port = Object_list[k].commonPorts[k1 - 1]
-                        # choose_options(k, strt, fin, step, port)
+                        ChartCreation(k, strt, fin, port).start_to_plot()
                     else:
                         print(f'Введите число в пределах 0 - {t - 1}')
             else:
