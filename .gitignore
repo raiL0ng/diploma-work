@@ -1,0 +1,13 @@
+*.txt
+*.aux
+*.fls
+*.fdb_latexmk
+*.out
+*.synctex.gz
+*.toc
+*.pyg
+*.synctex*
+test*.py
+temp.py
+data*.log
+*.log
