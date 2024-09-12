@@ -37,6 +37,7 @@ def write_to_file():
 
 # Обработка строки с данными
 def row_processing(inf):
+    global Packet_list
     data = []
     while True:
         beg = inf.find(':')
@@ -46,13 +47,13 @@ def row_processing(inf):
         else:
             data.append(inf[beg + 1: end])
         inf = inf[end + 1:]
-    return PacketInf().set_data_from_list(data)
+    Packet_list.append(PacketInf(data))
 
 
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
 def read_from_file():
-    global Packet_list
+    # global Packet_list
     print('Введите название файла (например: data.log)')
     FileName = input()
     if Packet_list:
@@ -64,7 +65,7 @@ def read_from_file():
                 inf = f.readline()
                 if not inf:
                     break
-                Packet_list.append(row_processing(inf))
+                row_processing(inf)
                 _ = si.find_session_location(Packet_list[-1])
     except:
         print(f'\nОшибка считывания файла {FileName}!\n')

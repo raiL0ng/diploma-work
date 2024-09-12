@@ -3,27 +3,7 @@ from math import sqrt
 # Класс, содержащий информацию о каком-либо пакете
 class PacketInf:
 
-  def __init__(self):
-      self.numPacket = None
-      self.timePacket = None
-      self.packetSize = None
-      self.mac_src = None
-      self.mac_dest = None
-      self.protoType = None
-      self.ip_src = None
-      self.ip_dest = None
-      self.port_src = None
-      self.port_dest = None
-      self.len_data = None
-      self.seq = None
-      self.ack = None
-      self.fl_ack = None
-      self.fl_psh = None
-      self.fl_rst = None
-      self.fl_syn = None
-      self.fl_fin = None
-
-  def set_data_from_list(self, lst):
+  def __init__(self, lst):
       self.numPacket = int(lst[0])
       self.timePacket = float(lst[1])
       self.packetSize = int(lst[2])
@@ -43,6 +23,7 @@ class PacketInf:
           self.fl_rst = lst[15]
           self.fl_syn = lst[16]
           self.fl_fin = lst[17]
+
 
 # Класс, содержащий информацию относительно какого-либо IP-адреса
 class ExploreObject:

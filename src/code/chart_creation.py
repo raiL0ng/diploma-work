@@ -187,7 +187,7 @@ class ChartCreation():
     def get_udp_tcp_rel(self, exploreIP):
         cntUDP = 0
         cntTCP = 0
-        curTime = self.strt + 1
+        curTime = self.strt_time + 1
         finTime = self.fin_time + 1
         pos = 0
         rel_list = []
@@ -241,7 +241,7 @@ class ChartCreation():
                     cntOutput = 0
                     pos = k
                     break
-                if self.port == None:
+                if self.curPort == None:
                     if Packet_list[k].protoType == 'TCP' and Packet_list[k].fl_ack == '1':
                         if Packet_list[k].ip_src == exploreIP:
                             cntOutput += 1
@@ -367,16 +367,16 @@ class ChartCreation():
                         cntpktdest += 1
                         if maxpktsizedst < Packet_list[k].packetSize:
                             maxpktsizedst = Packet_list[k].packetSize
-            else:
-                if Packet_list[k].port_src == self.curPort or Packet_list[k].port_dest == self.curPort:
-                    if Packet_list[k].ip_src == exploreIP:
-                        cntpktsrc += 1
-                        if maxpktsizesrc < Packet_list[k].packetSize:
-                            maxpktsizesrc = Packet_list[k].packetSize
-                    if Packet_list[k].ip_dest == exploreIP:
-                        cntpktdest += 1
-                        if maxpktsizedst < Packet_list[k].packetSize:
-                            maxpktsizedst = Packet_list[k].packetSize
+                else:
+                    if Packet_list[k].port_src == self.curPort or Packet_list[k].port_dest == self.curPort:
+                        if Packet_list[k].ip_src == exploreIP:
+                            cntpktsrc += 1
+                            if maxpktsizesrc < Packet_list[k].packetSize:
+                                maxpktsizesrc = Packet_list[k].packetSize
+                        if Packet_list[k].ip_dest == exploreIP:
+                            cntpktdest += 1
+                            if maxpktsizedst < Packet_list[k].packetSize:
+                                maxpktsizedst = Packet_list[k].packetSize
             curTime += 1
         pktAmntSrcList.append(cntpktsrc)
         pktAmntDstList.append(cntpktdest)
@@ -598,5 +598,24 @@ class ChartCreation():
                 gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig)
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
+                fig_1.set_title('Максимальный размер входящих пакетов, полученных за ' + \
+                      'единицу времени', fontsize=15)
+                fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                plt.plot(x, Object_list[self.k].pkt_size_data_dst, 'b', label=self.curIP)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].pkt_size_data_dst, 'r', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_1.legend()
+                fig_2 = fig.add_subplot(gs[1, 0])
+                fig_2.grid()
+                plt.plot(x, Object_list[self.k].pkt_size_data_src, 'orange', label=self.curIP)
+                fig_2.set_title('Максимальный размер исходящих пакетов, полученных за ' + \
+                                'единицу времени', fontsize=15)
+                fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].pkt_size_data_src, 'g', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_2.legend()
+                plt.show()
             elif bl == '8':
                 break

@@ -111,7 +111,7 @@ class Sniffer:
                     pinf[5] = 'UDP'
                     pinf[8], pinf[9], _, data_udp = self.get_udp_segment(data_ipv4)
                     pinf[10] = len(data_udp)
-                    Packet_list.append(PacketInf().set_data_from_list(pinf))
+                    Packet_list.append(PacketInf(pinf))
                     mes_prob = si.find_session_location(Packet_list[-1])
                     self.print_packet_information(Packet_list[-1], mes_prob)
                 # Если это TCP-протокол  
@@ -126,7 +126,7 @@ class Sniffer:
                     pinf[15] = str((flags & 4) >> 2)
                     pinf[16] = str((flags & 2) >> 1)
                     pinf[17] = str(flags & 1)
-                    Packet_list.append(PacketInf().set_data_from_list(pinf))
+                    Packet_list.append(PacketInf(pinf))
                     mes_prob = si.find_session_location(Packet_list[-1])
                     self.print_packet_information(Packet_list[-1], mes_prob)
             if keyboard.is_pressed('space'):
@@ -153,6 +153,7 @@ class Sniffer:
         except PermissionError:
             print('\nНедостаточно прав!')
             print('Запустите программу от имени администратора!')
+            return
         else:
             print('\nНачался процесс захвата трафика...\n')
             self.start_to_listen()
