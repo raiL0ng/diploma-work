@@ -164,8 +164,8 @@ class Session:
         self.pktSize.append(pkt.packetSize)
         if pkt.protoType == 'TCP' and pkt.ip_src == self.initiator:
             self.cntPktTCP += 1
-        if pkt.fl_psh == '1':
-            self.cntpsh += 1
+            if pkt.fl_psh == '1':
+                self.cntpsh += 1
         if self.prevPktTime != None:
             self.intervals.append(pkt.timePacket - self.prevPktTime)
             self.prevPktTime = pkt.timePacket
