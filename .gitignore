@@ -11,3 +11,5 @@ test*.py
 temp.py
 data*.log
 *.log
+*env/
+*pycache*/
