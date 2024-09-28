@@ -45,6 +45,9 @@ class Session:
         self.intervals = []
         self.prevPktTime = None
 
+        self.pktTimeIntervals = []
+        self.prevPktTime__ = None
+        self.curTime__ = strtTime + 10
 
     # Обновление значения порядкового номера
     def upd_seq_num(self, seq):
@@ -256,6 +259,17 @@ class Session:
         self.is_rdp = cnt > len(self.is_rdpArr) - cnt
 
 
+    def set_time_intervals(self, pkt):
+        if self.curTime__ > self.curTime__:
+            self.curTime__ += 10
+            return 
+        if self.prevPktTime__ is None:
+            self.prevPktTime__ = pkt.timePacket
+        else:
+            self.pktTimeIntervals.append(pkt.timePacket - self.prevPktTime__)
+            self.prevPktTime__ = pkt.timePacket
+        return None
+
 class SessionInitialization:
 
     def __init__(self) -> None:
@@ -386,3 +400,145 @@ class SessionInitialization:
                 print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия с вероятностью {s.prob}%!!!')
             cnt += 1
         print(f'{line}{line}\n')
+
+
+class Session2:
+
+    def __init__(self, strt_time, ips, isNewSession=False) -> None:
+        self.strt_time = strt_time
+        self.ips = ips
+        self.newSessionFlag = isNewSession
+        self.stateActive = True
+        self.port = None
+        self.prevTimePkt = None
+        self.intervalsList = []
+
+        self.cntPktSrcIP1 = 0
+        self.cntPktDestIP1 = 0
+        self.pktSizeDestIP1 = []
+        self.pktSizeDestIP2 = []
+        
+        # Для подсчета флагов PSH        
+        self.cntPSHDestIP1 = 0
+        self.cntPSHDestIP2 = 0
+        # Для подсчета флагов ACK
+        self.cntACKDestIP1 = 0
+        self.cntACKDestIP2 = 0
+        self.cntACKSrcIP1 = 0
+        # Для подсчета всего TCP-трафика
+        self.cntPktTCPDestIP1 = 0
+        self.cntPktTCPDestIP2 = 0
+        
+        self.winSizeList = []
+        self.cntPkt = 0
+
+
+    def update_data(self, pkt):
+        # Вычисление временных интервалов
+        if self.prevTimePkt is None:
+            self.prevTimePkt = pkt.timePacket
+        else:
+            self.intervalsList.append(pkt.timePacket - self.prevTimePkt)
+            self.prevTimePkt = pkt.timePacket
+        # Подсчет параметров входящего и исходящего трафиков для IP1
+        # и размера входящих пакетов для IP1 и IP2
+        if pkt.ip_src == self.ips[0]:
+            self.cntPktSrcIP1 += 1
+            self.pktSizeDestIP2.append(pkt.packetSize)
+        else:
+            self.cntPktDestIP1 += 1
+            self.pktSizeDestIP1.append(pkt.packetSize)
+        # Подсчет флагов PSH и ACK
+        if pkt.protoType == 'TCP':
+            if pkt.ip_dest == self.ips[0]:
+                if pkt.fl_psh == '1':
+                    self.cntPSHDestIP1 += 1
+                if pkt.fl_ack == '1':
+                    self.cntACKDestIP1 += 1
+                self.cntPktTCPDestIP1 += 1
+            if pkt.ip_dest == self.ips[1]:
+                if pkt.fl_psh == '1':
+                    self.cntPSHDestIP2 += 1
+                if pkt.fl_ack == '1':
+                    self.cntACKDestIP2 += 1
+                    self.cntACKSrcIP1 += 1
+                self.cntPktTCPDestIP2 += 1
+        
+        self.cntPkt += 1
+
+    def clean_all_parameters(self):
+        self.prevTimePkt = None
+        self.intervalsList.clear()
+        self.cntPktSrcIP1 = 0
+        self.cntPktDestIP1 = 0
+        self.pktSizeDestIP1.clear()
+        self.pktSizeDestIP2.clear()
+        self.cntPSHDestIP1 = 0
+        self.cntPSHDestIP2 = 0
+        self.cntACKDestIP1 = 0
+        self.cntACKDestIP2 = 0
+        self.cntACKSrcIP1 = 0
+        self.cntPktTCPDestIP1 = 0
+        self.cntPktTCPDestIP2 = 0
+        
+        self.winSizeList.clear()
+        self.cntPkt = 0
+
+
+    def get_result(self):
+        result = []
+        if not self.stateActive:
+            return None
+        l = len(self.intervalsList)
+        if l == 0:
+            self.stateActive = False
+            return None
+        # Вычисление средней задержки
+        sum = 0
+        for el in self.intervalsList:
+            sum += el
+        result.append(sum / l)
+        # Вычисление стандартного отклонения
+        sum = 0
+        for el in self.intervalsList:
+            sum += (el - result[0]) * (el - result[0])
+        result.append(sqrt(sum / l))
+        # Вычисление среднего отклонения (джиттера)
+        sum = 0
+        if l < 2:
+            result.append(0)
+        else:
+            for i in range(1, l):
+                sum += self.intervalsList[i] - self.intervalsList[i - 1]
+            result.append(sum / (l - 1))
+        # Вычисление медианы временных интервалов
+        tmp = sorted(self.intervalsList)
+        if l % 2 == 0:
+            result.append((tmp[(l // 2) - 1] + tmp[l // 2]) / 2)
+        else:
+            result.append(tmp[l // 2])
+        # Вычисление отношения объема входящего на исходящий трафик для IP1 и IP2
+        if self.cntPktSrcIP1 != 0:
+            result.append(self.cntPktDestIP1 / self.cntPktSrcIP1)
+        else:
+            result.append(0)
+        if self.cntPktDestIP1 != 0:
+            result.append(self.cntPktSrcIP1 / self.cntPktDestIP1)
+        else:
+            result.append(0)
+        # Вычисление среднего значения объема пакетов получаемого IP1
+        l = len(self.pktSizeDestIP1)
+        sum = 0
+        for el in self.pktSizeDestIP1:
+            sum += el
+        result.append(sum / l)
+        # Вычисление среднего значения объема пакетов получаемого IP2
+        l = len(self.pktSizeDestIP2)
+        sum = 0
+        for el in self.pktSizeDestIP2:
+            sum += el
+        result.append(sum / l)
+
+        self.clean_all_parameters()
+        return result
+        

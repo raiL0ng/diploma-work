@@ -50,6 +50,14 @@ def row_processing(inf):
     Packet_list.append(PacketInf(data))
 
 
+def get_new_session(pkt, iplist):
+    if len(iplist) == 0:
+        return True
+    for el in iplist:
+        if el != (pkt.ip_src, pkt.ip_dest) and (pkt.ip_dest, pkt.ip_src) != el:
+            return True
+    return False
+
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
 def read_from_file():
@@ -60,12 +68,16 @@ def read_from_file():
         return
     try:
         si = SessionInitialization()
+        iplist = set()
         with open(FileName, 'r') as f:
             while True:
                 inf = f.readline()
                 if not inf:
                     break
                 row_processing(inf)
+                if get_new_session(Packet_list[-1], iplist):
+                    iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
                 _ = si.find_session_location(Packet_list[-1])
+        print(f"IPS = {iplist} len = {len(iplist)}")
     except:
         print(f'\nОшибка считывания файла {FileName}!\n')

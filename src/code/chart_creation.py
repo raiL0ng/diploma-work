@@ -297,6 +297,43 @@ class ChartCreation():
         return rel_list
 
 
+    # Универсальный метод для получения частоты флагов
+    def get_flags_freq_src(self, exploreIP, flag_type):
+        cntFlagTCP = 0
+        cntTCP = 0
+        rel_list = []
+        curTime = self.strt_time + 1
+        finTime = self.fin_time + 1
+        pos = 0
+        while curTime < finTime:
+            for k in range(pos, len(Packet_list)):
+                if Packet_list[k].timePacket > curTime:
+                    if cntTCP != 0:
+                        rel_list.append(cntFlagTCP / cntTCP)
+                    else:
+                        rel_list.append(0.0)
+                    cntFlagTCP = 0
+                    cntTCP = 0
+                    pos = k
+                    break
+                if self.curPort is None:
+                    if Packet_list[k].ip_src == exploreIP and Packet_list[k].protoType == 'TCP':
+                        cntTCP += 1
+                        if getattr(Packet_list[k], flag_type) == '1':
+                            cntFlagTCP += 1
+                else:
+                    if Packet_list[k].port_src == self.curPort or Packet_list[k].port_dest == self.curPort:
+                        if Packet_list[k].ip_src == exploreIP and Packet_list[k].protoType == 'TCP':
+                            cntTCP += 1
+                            if getattr(Packet_list[k], flag_type) == '1':
+                                cntFlagTCP += 1
+            curTime += 1
+        if cntTCP != 0:
+            rel_list.append(cntFlagTCP / cntTCP)
+        else:
+            rel_list.append(0.0)
+        return rel_list
+
     # Получение данных о количестве пакетов и
     # о максимумах пакетов в единицу времени
     def get_pktamnt_and_size_persec(self, exploreIP):
@@ -383,7 +420,9 @@ class ChartCreation():
             6. Построить график отображения количества пакетов в единицу времени
             7. Построить график отображения максимумов среди пакетов в единицу времени
             8. Построить график частоты SYN и FIN флагов во входящих пакетах
-            9. Вернуться к выбору IP-адреса """)
+            9. Построить график частоты PSH флагов во входящих и исходящих пакетах
+            10. Построить график частоты ACK флагов во входящих и исходящих пакетах
+            11. Вернуться к выбору IP-адреса """)
             bl = input()
             if bl == '1':
                 self.print_adjacent_packets()
@@ -622,4 +661,86 @@ class ChartCreation():
                 fig_2.legend()
                 plt.show()
             elif bl == '9':
+                data = self.get_flags_freq(self.curIP, 'fl_psh')
+                Object_list[self.k].psh_flags_freq_data = data
+                data = self.get_flags_freq_src(self.curIP, 'fl_psh')
+                Object_list[self.k].psh_flags_freq_data_src = data
+                x = [i for i in range(0, len(Object_list[self.k].psh_flags_freq_data))]
+                x_labels = [i for i in range(0, len(x), self.step)]
+                scndIP = self.get_2nd_IP_for_plot()
+                if scndIP == -1:
+                    continue
+                if scndIP != 'None':
+                    pos = self.get_pos_by_IP(scndIP)
+                    data = self.get_flags_freq(scndIP, 'fl_psh')
+                    Object_list[pos].psh_flags_freq_data = data
+                    data = self.get_flags_freq_src(scndIP, 'fl_psh')
+                    Object_list[pos].psh_flags_freq_data_src = data
+                fig = plt.figure(figsize=(16, 6), constrained_layout=True)
+                gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig)
+                fig_1 = fig.add_subplot(gs[0, 0])
+                fig_1.grid()
+                fig_1.set_title('Частота флагов PSH' + \
+                                r' ($r_{PSH} = \frac{V_{P_{in}}}{V_{tcp}}$)', fontsize=15)
+                fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                fig_1.set_ylabel(r'$r_{psh} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
+                plt.plot(x, Object_list[self.k].psh_flags_freq_data, 'b', label=self.curIP)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].psh_flags_freq_data, 'r', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_1.legend()
+                fig_2 = fig.add_subplot(gs[1, 0])
+                fig_2.grid()
+                plt.plot(x, Object_list[self.k].psh_flags_freq_data_src, 'orange', label=self.curIP)
+                fig_2.set_title('Частота флагов PSH' + \
+                                r' ($r_{psh} = \frac{V_{P_{out}}}{V_{tcp}}$)', fontsize=15)
+                fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                fig_2.set_ylabel(r'$r_{psh} = \frac{V_{P_{out}}}{V_{tcp}}$', fontsize=15)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].psh_flags_freq_data_src, 'g', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_2.legend()
+                plt.show()
+            elif bl == '10':
+                data = self.get_flags_freq(self.curIP, 'fl_ack')
+                Object_list[self.k].ack_flags_freq_data = data
+                data = self.get_flags_freq_src(self.curIP, 'fl_ack')
+                Object_list[self.k].ack_flags_freq_data_src = data
+                x = [i for i in range(0, len(Object_list[self.k].ack_flags_freq_data))]
+                x_labels = [i for i in range(0, len(x), self.step)]
+                scndIP = self.get_2nd_IP_for_plot()
+                if scndIP == -1:
+                    continue
+                if scndIP != 'None':
+                    pos = self.get_pos_by_IP(scndIP)
+                    data = self.get_flags_freq(scndIP, 'fl_ack')
+                    Object_list[pos].ack_flags_freq_data = data
+                    data = self.get_flags_freq_src(scndIP, 'fl_ack')
+                    Object_list[pos].ack_flags_freq_data_src = data
+                fig = plt.figure(figsize=(16, 6), constrained_layout=True)
+                gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig)
+                fig_1 = fig.add_subplot(gs[0, 0])
+                fig_1.grid()
+                fig_1.set_title('Частота флагов ack' + \
+                                r' ($r_{ACK} = \frac{V_{P_{in}}}{V_{tcp}}$)', fontsize=15)
+                fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                fig_1.set_ylabel(r'$r_{ack} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
+                plt.plot(x, Object_list[self.k].ack_flags_freq_data, 'b', label=self.curIP)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].ack_flags_freq_data, 'r', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_1.legend()
+                fig_2 = fig.add_subplot(gs[1, 0])
+                fig_2.grid()
+                plt.plot(x, Object_list[self.k].ack_flags_freq_data_src, 'orange', label=self.curIP)
+                fig_2.set_title('Частота флагов ack' + \
+                                r' ($r_{ACK} = \frac{V_{P_{out}}}{V_{tcp}}$)', fontsize=15)
+                fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                fig_2.set_ylabel(r'$r_{ack} = \frac{V_{P_{out}}}{V_{tcp}}$', fontsize=15)
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].ack_flags_freq_data_src, 'g', label=scndIP)
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=8)
+                fig_2.legend()
+                plt.show()
+            elif bl == '11':
                 break

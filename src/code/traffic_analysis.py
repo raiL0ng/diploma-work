@@ -81,7 +81,13 @@ class TrafficAnalysis:
             return
         self.get_common_data()
         si = SessionInitialization()
+        print(f'Sessions len = {len(Session_list)}:')
+        for el in Session_list:
+            print(f"({el.initiator}, {el.target})", end=' ')
         si.clear_end_sessions()
+        print(f'after clean Sessions len = {len(Session_list)}:')
+        for el in Session_list:
+            print(f"({el.initiator}, {el.target})", end=' ')
         for s in Session_list:
             s.fin_rdp_check()
         si.print_inf_about_sessions()

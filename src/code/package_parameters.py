@@ -43,7 +43,9 @@ class ExploreObject:
     self.syn_flags_freq_data = None
     self.fin_flags_freq_data = None
     self.psh_flags_freq_data = None
+    self.psh_flags_freq_data_src = None
     self.ack_flags_freq_data = None
+    self.ack_flags_freq_data_src = None
     self.pkt_amnt_src_data = None
     self.pkt_amnt_dst_data = None
     self.pkt_size_data_src = None
