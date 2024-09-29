@@ -1,6 +1,6 @@
 import time
 from variable_definition import Packet_list, Object_list, Labels_list, Session_list
-from session_creation import SessionInitialization, Session
+from session_creation import SessionInitialization, Session, SessionInitialization2, Session2
 from package_parameters import ExploreObject
 from chart_creation import ChartCreation
 
@@ -80,16 +80,20 @@ class TrafficAnalysis:
             print('\nНет данных! Сначала необходимо получить данные!\n')
             return
         self.get_common_data()
-        si = SessionInitialization()
+        # si = SessionInitialization()
+        # print(f'Sessions len = {len(Session_list)}:')
+        # for el in Session_list:
+        #     print(f"({el.initiator}, {el.target})", end=' ')
+        # si.clear_end_sessions()
+        # print(f'after clean Sessions len = {len(Session_list)}:')
+        # for el in Session_list:
+        #     print(f"({el.initiator}, {el.target})", end=' ')
+        # for s in Session_list:
+        #     s.fin_rdp_check()
+        # si.print_inf_about_sessions()
+        si = SessionInitialization2()
         print(f'Sessions len = {len(Session_list)}:')
-        for el in Session_list:
-            print(f"({el.initiator}, {el.target})", end=' ')
         si.clear_end_sessions()
-        print(f'after clean Sessions len = {len(Session_list)}:')
-        for el in Session_list:
-            print(f"({el.initiator}, {el.target})", end=' ')
-        for s in Session_list:
-            s.fin_rdp_check()
         si.print_inf_about_sessions()
         strt = Packet_list[0].timePacket
         fin = Packet_list[-1].timePacket

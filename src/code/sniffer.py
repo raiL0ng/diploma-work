@@ -51,9 +51,12 @@ class Sniffer:
 
     # Получение TCP-cегмента данных
     def get_tcp_segment(self, data):
-        src_port, dest_port, sequence, ack, some_block = struct.unpack('!HHLLH', data[:14])
-        return str(src_port), str(dest_port), str(sequence), str(ack), \
-                some_block, data[(some_block >> 12) * 4:]
+        src_port, dest_port, sequence, ack, \
+            offset, win_size = struct.unpack('!HHLLHH', data[:16])
+        offset = (offset >> 12) * 4
+        flags = offset & 0x01FF
+        return str(src_port), str(dest_port), str(sequence), \
+               str(ack), flags, win_size, data[offset:]
 
 
     # Форматирование данных для корректного представления
@@ -91,7 +94,7 @@ class Sniffer:
         global Packet_list
         NumPacket = 1
         curcnt = 1000
-        pinf = [''] * 18
+        pinf = [''] * 19
         si = SessionInitialization()
         while True:
             # Получение пакетов в виде набора hex-чисел
@@ -119,7 +122,7 @@ class Sniffer:
                     NumPacket += 1
                     pinf[5] = 'TCP'
                     pinf[8], pinf[9], pinf[11], \
-                    pinf[12], flags, data_tcp = self.get_tcp_segment(data_ipv4)
+                    pinf[12], flags, pinf[18], data_tcp = self.get_tcp_segment(data_ipv4)
                     pinf[10] = len(data_tcp)
                     pinf[13] = str((flags & 16) >> 4)
                     pinf[14] = str((flags & 8) >> 3)

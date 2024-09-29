@@ -23,6 +23,7 @@ class PacketInf:
           self.fl_rst = lst[15]
           self.fl_syn = lst[16]
           self.fl_fin = lst[17]
+          self.win_size = lst[18]
 
 
 # Класс, содержащий информацию относительно какого-либо IP-адреса

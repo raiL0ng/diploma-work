@@ -1,4 +1,4 @@
-from session_creation import SessionInitialization
+from session_creation import SessionInitialization, SessionInitialization2
 from variable_definition import Packet_list
 from package_parameters import PacketInf
 
@@ -27,7 +27,7 @@ def write_to_file():
                              f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
                              f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};Seq:{obj.seq};' +
                              f'Ack:{obj.ack};Fl-ack:{obj.fl_ack};Fl-psh:{obj.fl_psh};' +
-                             f'Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};Fl-fin:{obj.fl_fin};!\n' )
+                             f'Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};Fl-fin:{obj.fl_fin};Win-size:{obj.win_size}!\n' )
             print(f'\nВ файл {FileName} была успешна записана информация.\n')
             f.close()
         except:
@@ -54,9 +54,9 @@ def get_new_session(pkt, iplist):
     if len(iplist) == 0:
         return True
     for el in iplist:
-        if el != (pkt.ip_src, pkt.ip_dest) and (pkt.ip_dest, pkt.ip_src) != el:
-            return True
-    return False
+        if el == (pkt.ip_src, pkt.ip_dest) or (pkt.ip_dest, pkt.ip_src) == el:
+            return False
+    return True
 
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
@@ -67,7 +67,8 @@ def read_from_file():
     if Packet_list:
         return
     try:
-        si = SessionInitialization()
+        # si = SessionInitialization()
+        si = SessionInitialization2()
         iplist = set()
         with open(FileName, 'r') as f:
             while True:
@@ -77,7 +78,10 @@ def read_from_file():
                 row_processing(inf)
                 if get_new_session(Packet_list[-1], iplist):
                     iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
-                _ = si.find_session_location(Packet_list[-1])
+                if si.curTime is None:
+                    si.add_start_time(Packet_list[-1].timePacket) 
+                si.find_session_location(Packet_list[-1])
+
         print(f"IPS = {iplist} len = {len(iplist)}")
     except:
         print(f'\nОшибка считывания файла {FileName}!\n')

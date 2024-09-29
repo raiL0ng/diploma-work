@@ -1,5 +1,5 @@
 import time
-from variable_definition import Packet_list, Session_list, Labels_list, Object_list, line
+from variable_definition import Packet_list, Session_list, line
 from colorama import init, Back, Fore
 from math import sqrt
 
@@ -404,13 +404,15 @@ class SessionInitialization:
 
 class Session2:
 
-    def __init__(self, strt_time, ips, isNewSession=False) -> None:
+    def __init__(self, strt_time, ips, ports) -> None:
         self.strt_time = strt_time
         self.ips = ips
-        self.newSessionFlag = isNewSession
         self.stateActive = True
-        self.port = None
+        self.forceFin = False
+        self.ports = ports
         self.prevTimePkt = None
+        self.lastTimePkt = None
+        self.totalTime = None
         self.intervalsList = []
 
         self.cntPktSrcIP1 = 0
@@ -428,9 +430,12 @@ class Session2:
         # Для подсчета всего TCP-трафика
         self.cntPktTCPDestIP1 = 0
         self.cntPktTCPDestIP2 = 0
-        
+
         self.winSizeList = []
+
+        self.cntPktUDP = 0
         self.cntPkt = 0
+        self.CNT = 0
 
 
     def update_data(self, pkt):
@@ -463,8 +468,13 @@ class Session2:
                     self.cntACKDestIP2 += 1
                     self.cntACKSrcIP1 += 1
                 self.cntPktTCPDestIP2 += 1
-        
+            if pkt.fl_fin == '1' or pkt.fl_rst == '1':
+                self.forceFin = True
+        else:
+            self.cntPktUDP += 1
+        self.lastTimePkt = pkt.timePacket
         self.cntPkt += 1
+        self.CNT += 1
 
     def clean_all_parameters(self):
         self.prevTimePkt = None
@@ -482,16 +492,28 @@ class Session2:
         self.cntPktTCPDestIP2 = 0
         
         self.winSizeList.clear()
+        self.cntPktUDP = 0
         self.cntPkt = 0
 
 
-    def get_result(self):
+    def ratio_calc(self, num, denom):
+        if denom == 0:
+            return 0
+        return num / denom
+
+
+    def get_result(self,):
         result = []
         if not self.stateActive:
             return None
         l = len(self.intervalsList)
-        if l == 0:
+        if self.stateActive and l == 0 or len(self.pktSizeDestIP1) == 0 or len(self.pktSizeDestIP2) == 0:
             self.stateActive = False
+            self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
+            print( f'Время last:'
+                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
+            print( f'Время strt:'
+                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
             return None
         # Вычисление средней задержки
         sum = 0
@@ -509,7 +531,7 @@ class Session2:
             result.append(0)
         else:
             for i in range(1, l):
-                sum += self.intervalsList[i] - self.intervalsList[i - 1]
+                sum += abs(self.intervalsList[i] - self.intervalsList[i - 1])
             result.append(sum / (l - 1))
         # Вычисление медианы временных интервалов
         tmp = sorted(self.intervalsList)
@@ -518,14 +540,10 @@ class Session2:
         else:
             result.append(tmp[l // 2])
         # Вычисление отношения объема входящего на исходящий трафик для IP1 и IP2
-        if self.cntPktSrcIP1 != 0:
-            result.append(self.cntPktDestIP1 / self.cntPktSrcIP1)
-        else:
-            result.append(0)
-        if self.cntPktDestIP1 != 0:
-            result.append(self.cntPktSrcIP1 / self.cntPktDestIP1)
-        else:
-            result.append(0)
+        result.append(self.ratio_calc(self.cntPktDestIP1, self.cntPktSrcIP1))
+        result.append(self.ratio_calc(self.cntPktSrcIP1, self.cntPktDestIP1))
+        # Вычисление отношения объема UDP-трафика и TCP-трафика
+        result.append(self.ratio_calc(self.cntPktUDP, self.cntPkt - self.cntPktUDP))
         # Вычисление среднего значения объема пакетов получаемого IP1
         l = len(self.pktSizeDestIP1)
         sum = 0
@@ -538,7 +556,98 @@ class Session2:
         for el in self.pktSizeDestIP2:
             sum += el
         result.append(sum / l)
-
+        # Вычисление частоты флагов PSH для IP1 и IP2
+        result.append(self.ratio_calc(self.cntPSHDestIP1, self.cntPktTCPDestIP1))
+        result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntPktTCPDestIP2))
+        # Вычисление частоты флагов ACK для IP1 и IP2
+        result.append(self.ratio_calc(self.cntACKDestIP1, self.cntPktTCPDestIP1))
+        result.append(self.ratio_calc(self.cntACKDestIP2, self.cntPktTCPDestIP2))
+        # Вычисление отношения ACK/PSH для IP1 и IP2
+        result.append(self.ratio_calc(self.cntPSHDestIP1, self.cntACKDestIP1))
+        result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntACKDestIP2))
+        # Вычисление разности числа исходящих и входящих ACK-флагов IP1
+        result.append(abs(self.cntACKDestIP1 - self.cntACKSrcIP1))
         self.clean_all_parameters()
         return result
-        
+
+
+class SessionInitialization2:
+
+
+    def __init__(self) -> None:
+        # self.strtTime = strt
+        self.curTime = None
+
+
+    def add_start_time(self, strt):
+        self.curTime = strt + 15
+
+
+    def find_session_location(self, pkt) -> None:
+        global Session_list
+        isNewSession = True
+        for s in Session_list:
+            if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips and pkt.port_src in s.ports and pkt.port_dest in s.ports:
+                isNewSession = False
+                if pkt.timePacket > self.curTime:
+                    self.curTime += 15
+                    vec = s.get_result()
+                    print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
+                if s.forceFin:
+                    vec = s.get_result()
+                    print(f"forceFin ips = {s.ips} ports = {s.ports} vector = {vec}")
+                s.update_data(pkt)
+        if isNewSession:
+            Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
+            Session_list[-1].update_data(pkt)
+
+
+    # Обработка значений списка Session_list
+    def clear_end_sessions(self):
+        global Session_list
+        n = len(Session_list)
+        ids = []
+        for i in range(n):
+            if not Session_list[i].stateActive and Session_list[i].totalTime < 10:
+                ids.append(i)
+        tmp = Session_list.copy()
+        Session_list.clear()
+        for i in range(n):
+            if i in ids:
+                continue
+            Session_list.append(tmp[i])
+        for s in Session_list:
+            s.get_result()
+
+
+    # Вывод информации о сессиях
+    def print_inf_about_sessions(self):
+        cnt = 1
+        print(f'\nБыло перехвачено {len(Session_list)} сессии(-й)')
+        for s in Session_list:
+            print( f'\nИнформация о сессии #{cnt}:\n' +
+                   f'IP-адреса: {s.ips}\n' +
+                   f'Порт подключения: {s.ports}')
+            print( f'Время перехвата первого пакета:'
+                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.strt_time)) )
+            print(f'Количество перехваченных пакетов: {s.CNT}')
+            print( f'Общее время перехвата:'
+                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.totalTime)) )
+            
+            # if s.finTime == None:
+            #     print(f'Время завершения соединения: нет данных')
+            # else:
+            #     print( f'Время завершения соединения:'
+            #          , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.finTime)))
+            #     print(f'Общее время соединения: {s.totalTime} сек')
+            # if s.is_rdp and s.prob > 50:
+            #     print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия с вероятностью {s.prob}%!!!')
+            cnt += 1
+        print(f'{line}{line}\n')
+    
+    def write_vector(self, vec):
+        try:
+            with open("metrics.log", "a+") as f:
+                f.write(vec)
+        except:
+            print(f"Не удалось записать вектор {vec}")
