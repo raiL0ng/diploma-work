@@ -3,7 +3,7 @@ from time import time
 from variable_definition import Packet_list, line, Phrases_signs
 from common_methods import write_to_file
 from package_parameters import PacketInf
-from session_creation import SessionInitialization
+from session_creation import SessionInitialization, SessionInitialization2
 
 
 class Sniffer:
@@ -95,19 +95,22 @@ class Sniffer:
         NumPacket = 1
         curcnt = 1000
         pinf = [''] * 19
-        si = SessionInitialization()
+        # si = SessionInitialization()
+        si = SessionInitialization2()
         while True:
             # Получение пакетов в виде набора hex-чисел
             raw_data, _ = self.connection.recvfrom(65565)
             pinf[0], pinf[1] = NumPacket, time()
             pinf[2] = len(raw_data)
+            if si.curTime is None:
+                si.add_start_time(pinf[1])
             # Если это интернет-протокол четвертой версии    
             pinf[4], pinf[3], protocol = self.get_ethernet_frame(raw_data)
             if protocol == 8:
                 _, proto, pinf[6], pinf[7], data_ipv4 = self.get_ipv4_data(raw_data[14:])
                 if NumPacket > curcnt:
                     curcnt += 1000
-                    si.clear_end_sessions() 
+                    si.clear_end_sessions()
                 # Если это UDP-протокол  
                 if proto == 17:
                     NumPacket += 1
@@ -115,8 +118,9 @@ class Sniffer:
                     pinf[8], pinf[9], _, data_udp = self.get_udp_segment(data_ipv4)
                     pinf[10] = len(data_udp)
                     Packet_list.append(PacketInf(pinf))
-                    mes_prob = si.find_session_location(Packet_list[-1])
-                    self.print_packet_information(Packet_list[-1], mes_prob)
+                    # mes_prob = si.find_session_location(Packet_list[-1])
+                    si.find_session_location(Packet_list[-1])
+                    # self.print_packet_information(Packet_list[-1], [0])
                 # Если это TCP-протокол  
                 if proto == 6:
                     NumPacket += 1
@@ -130,8 +134,9 @@ class Sniffer:
                     pinf[16] = str((flags & 2) >> 1)
                     pinf[17] = str(flags & 1)
                     Packet_list.append(PacketInf(pinf))
-                    mes_prob = si.find_session_location(Packet_list[-1])
-                    self.print_packet_information(Packet_list[-1], mes_prob)
+                    # mes_prob = si.find_session_location(Packet_list[-1])
+                    si.find_session_location(Packet_list[-1])
+                    # self.print_packet_information(Packet_list[-1], [0])
             if keyboard.is_pressed('space'):
                 self.connection.close()
                 print('\nЗавершение программы...\n')

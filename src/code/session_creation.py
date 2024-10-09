@@ -470,6 +470,8 @@ class Session2:
                 self.cntPktTCPDestIP2 += 1
             if pkt.fl_fin == '1' or pkt.fl_rst == '1':
                 self.forceFin = True
+            # Подсчет размеров окна
+            self.winSizeList.append(pkt.win_size)
         else:
             self.cntPktUDP += 1
         self.lastTimePkt = pkt.timePacket
@@ -507,13 +509,15 @@ class Session2:
         if not self.stateActive:
             return None
         l = len(self.intervalsList)
-        if self.stateActive and l == 0 or len(self.pktSizeDestIP1) == 0 or len(self.pktSizeDestIP2) == 0:
+        if self.stateActive and l == 0 or len(self.pktSizeDestIP1) == 0 or len(self.pktSizeDestIP2) == 0 or len():
             self.stateActive = False
             self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
             print( f'Время last:'
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
             print( f'Время strt:'
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
+            print( f'Время total:'
+                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.totalTime)) )
             return None
         # Вычисление средней задержки
         sum = 0
@@ -567,6 +571,23 @@ class Session2:
         result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntACKDestIP2))
         # Вычисление разности числа исходящих и входящих ACK-флагов IP1
         result.append(abs(self.cntACKDestIP1 - self.cntACKSrcIP1))
+        # Вычисление среднего размера экрана
+        l = len(self.winSizeList)
+        if l != 0:
+            sum = 0
+            for el in self.winSizeList:
+                sum += el
+            result.append(sum / l)
+            # Вычисление частоты обновления окна
+            cntRatio = 1
+            prev = self.winSizeList[0]
+            for winSize in self.winSizeList[1:]:
+                if prev != winSize:
+                    prev = winSize
+                    cntRatio += 1
+            result.append(cntRatio / 15)
+        else:
+            result.extend([0, 0])
         self.clean_all_parameters()
         return result
 
@@ -586,16 +607,18 @@ class SessionInitialization2:
     def find_session_location(self, pkt) -> None:
         global Session_list
         isNewSession = True
+        if pkt.timePacket > self.curTime:
+            for s in Session_list:
+                vec = s.get_result()
+                print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
+                # Здесь должна быть нейронка
+            self.curTime += 15
         for s in Session_list:
             if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips and pkt.port_src in s.ports and pkt.port_dest in s.ports:
                 isNewSession = False
-                if pkt.timePacket > self.curTime:
-                    self.curTime += 15
-                    vec = s.get_result()
-                    print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
-                if s.forceFin:
-                    vec = s.get_result()
-                    print(f"forceFin ips = {s.ips} ports = {s.ports} vector = {vec}")
+                # if s.forceFin:
+                #     vec = s.get_result()
+                #     print(f"forceFin ips = {s.ips} ports = {s.ports} vector = {vec}")
                 s.update_data(pkt)
         if isNewSession:
             Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
@@ -645,6 +668,9 @@ class SessionInitialization2:
             cnt += 1
         print(f'{line}{line}\n')
     
+    def test_data(self):
+        pass
+
     def write_vector(self, vec):
         try:
             with open("metrics.log", "a+") as f:
