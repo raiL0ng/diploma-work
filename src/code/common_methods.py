@@ -81,7 +81,7 @@ def read_from_file():
                 if si.curTime is None:
                     si.add_start_time(Packet_list[-1].timePacket) 
                 si.find_session_location(Packet_list[-1])
-
+        si.rest_data_process()
         print(f"IPS = {iplist} len = {len(iplist)}")
     except:
         print(f'\nОшибка считывания файла {FileName}!\n')

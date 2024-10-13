@@ -12,8 +12,8 @@ class PacketInf:
       self.protoType = lst[5]
       self.ip_src = lst[6]
       self.ip_dest = lst[7]
-      self.port_src = lst[8]
-      self.port_dest = lst[9]
+      self.port_src = int(lst[8])
+      self.port_dest = int(lst[9])
       self.len_data = int(lst[10])
       if self.protoType == 'TCP':
           self.seq = lst[11]
@@ -23,8 +23,9 @@ class PacketInf:
           self.fl_rst = lst[15]
           self.fl_syn = lst[16]
           self.fl_fin = lst[17]
+          self.win_size = 0
           if len(lst) > 18:
-              self.win_size = lst[18]
+              self.win_size = int(lst[18])
 
 
 

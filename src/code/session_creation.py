@@ -276,7 +276,7 @@ class SessionInitialization:
         pass
 
     # Обработка значений списка Session_list
-    def clear_end_sessions(self):
+    def clear_unwanted_sessions(self):
         global Session_list
         n = len(Session_list)
         ids = []
@@ -504,20 +504,20 @@ class Session2:
         return num / denom
 
 
-    def get_result(self,):
+    def get_result(self):
         result = []
         if not self.stateActive:
             return None
         l = len(self.intervalsList)
-        if self.stateActive and l == 0 or len(self.pktSizeDestIP1) == 0 or len(self.pktSizeDestIP2) == 0 or len():
+        self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
+        print(f"intervals = {l} pktSizeDstIP1 = {len(self.pktSizeDestIP1)} pktSizeDstIP2 = {len(self.pktSizeDestIP2)} winsize = {len(self.winSizeList)} cntPkt = {self.cntPkt} CNT = {self.CNT}")
+        if self.stateActive and self.cntPkt < 2:
             self.stateActive = False
-            self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
             print( f'Время last:'
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
             print( f'Время strt:'
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
-            print( f'Время total:'
-                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.totalTime)) )
+            print( f'Время total: {self.totalTime}' )
             return None
         # Вычисление средней задержки
         sum = 0
@@ -553,13 +553,19 @@ class Session2:
         sum = 0
         for el in self.pktSizeDestIP1:
             sum += el
-        result.append(sum / l)
+        if l != 0:
+            result.append(sum / l)
+        else:
+            result.append(0)
         # Вычисление среднего значения объема пакетов получаемого IP2
         l = len(self.pktSizeDestIP2)
         sum = 0
         for el in self.pktSizeDestIP2:
             sum += el
-        result.append(sum / l)
+        if l != 0:
+            result.append(sum / l)
+        else:
+            result.append(0)
         # Вычисление частоты флагов PSH для IP1 и IP2
         result.append(self.ratio_calc(self.cntPSHDestIP1, self.cntPktTCPDestIP1))
         result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntPktTCPDestIP2))
@@ -597,8 +603,8 @@ class SessionInitialization2:
 
     def __init__(self) -> None:
         # self.strtTime = strt
+        self.known_ports = [21, 22, 23, 25, 53, 80, 88, 161, 443, 873]
         self.curTime = None
-
 
     def add_start_time(self, strt):
         self.curTime = strt + 15
@@ -610,28 +616,38 @@ class SessionInitialization2:
         if pkt.timePacket > self.curTime:
             for s in Session_list:
                 vec = s.get_result()
-                print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
+                # print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
                 # Здесь должна быть нейронка
             self.curTime += 15
         for s in Session_list:
-            if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips and pkt.port_src in s.ports and pkt.port_dest in s.ports:
-                isNewSession = False
-                # if s.forceFin:
-                #     vec = s.get_result()
-                #     print(f"forceFin ips = {s.ips} ports = {s.ports} vector = {vec}")
-                s.update_data(pkt)
+            if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips:
+                if (s.ports[1] is None and (pkt.port_src == s.ports[0] or pkt.port_dest == s.ports[0])) or \
+                   (pkt.port_src in s.ports and pkt.port_dest in s.ports):
+                    isNewSession = False
+                    s.update_data(pkt)
         if isNewSession:
-            Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
+            if pkt.port_src in self.known_ports:
+                Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, None)))
+            elif pkt.port_dest in self.known_ports:
+                Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_dest, None)))
+            else:
+                Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
             Session_list[-1].update_data(pkt)
 
 
+    def rest_data_process(self):
+        global Session_list
+        for s in Session_list:
+            vec = s.get_result()
+
+
     # Обработка значений списка Session_list
-    def clear_end_sessions(self):
+    def clear_unwanted_sessions(self):
         global Session_list
         n = len(Session_list)
         ids = []
         for i in range(n):
-            if not Session_list[i].stateActive and Session_list[i].totalTime < 10:
+            if Session_list[i].CNT < 20 or Session_list[i].totalTime < 10:
                 ids.append(i)
         tmp = Session_list.copy()
         Session_list.clear()
@@ -639,8 +655,6 @@ class SessionInitialization2:
             if i in ids:
                 continue
             Session_list.append(tmp[i])
-        for s in Session_list:
-            s.get_result()
 
 
     # Вывод информации о сессиях
@@ -654,8 +668,7 @@ class SessionInitialization2:
             print( f'Время перехвата первого пакета:'
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.strt_time)) )
             print(f'Количество перехваченных пакетов: {s.CNT}')
-            print( f'Общее время перехвата:'
-                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.totalTime)) )
+            print( f'Общее время перехвата: {s.totalTime}')
             
             # if s.finTime == None:
             #     print(f'Время завершения соединения: нет данных')

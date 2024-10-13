@@ -1,4 +1,6 @@
 import socket, struct, keyboard, os
+import threading
+import queue
 from time import time
 from variable_definition import Packet_list, line, Phrases_signs
 from common_methods import write_to_file
@@ -11,7 +13,7 @@ class Sniffer:
     def __init__(self) -> None:
         self.connection = None
         self.findRDP = False
-
+        self.packet_queue = queue.Queue()  # Очередь для хранения пакетов
 
     # Получение ethernet-кадра
     def get_ethernet_frame(self, data):
@@ -52,11 +54,10 @@ class Sniffer:
     # Получение TCP-cегмента данных
     def get_tcp_segment(self, data):
         src_port, dest_port, sequence, ack, \
-            offset, win_size = struct.unpack('!HHLLHH', data[:16])
-        offset = (offset >> 12) * 4
-        flags = offset & 0x01FF
+            offset_flags, win_size = struct.unpack('!HHLLHH', data[:16])
+        offset = (offset_flags >> 12) * 4
         return str(src_port), str(dest_port), str(sequence), \
-               str(ack), flags, win_size, data[offset:]
+               str(ack), offset_flags, win_size, data[offset:]
 
 
     # Форматирование данных для корректного представления
@@ -97,32 +98,42 @@ class Sniffer:
         pinf = [''] * 19
         # si = SessionInitialization()
         si = SessionInitialization2()
+
+        def packet_processing():
+            while True:
+                pkt = self.packet_queue.get()
+                if pkt is None:
+                    break  # Завершаем обработку
+                si.find_session_location(pkt)
+                self.packet_queue.task_done()
+
+        # Запускаем поток для обработки пакетов
+        processing_thread = threading.Thread(target=packet_processing)
+        processing_thread.start()
+
         while True:
-            # Получение пакетов в виде набора hex-чисел
             raw_data, _ = self.connection.recvfrom(65565)
             pinf[0], pinf[1] = NumPacket, time()
             pinf[2] = len(raw_data)
             if si.curTime is None:
                 si.add_start_time(pinf[1])
-            # Если это интернет-протокол четвертой версии    
+
             pinf[4], pinf[3], protocol = self.get_ethernet_frame(raw_data)
             if protocol == 8:
                 _, proto, pinf[6], pinf[7], data_ipv4 = self.get_ipv4_data(raw_data[14:])
                 if NumPacket > curcnt:
                     curcnt += 1000
-                    si.clear_end_sessions()
-                # Если это UDP-протокол  
-                if proto == 17:
+                    si.clear_unwanted_sessions()
+
+                if proto == 17:  # UDP
                     NumPacket += 1
                     pinf[5] = 'UDP'
                     pinf[8], pinf[9], _, data_udp = self.get_udp_segment(data_ipv4)
                     pinf[10] = len(data_udp)
                     Packet_list.append(PacketInf(pinf))
-                    # mes_prob = si.find_session_location(Packet_list[-1])
-                    si.find_session_location(Packet_list[-1])
-                    # self.print_packet_information(Packet_list[-1], [0])
-                # Если это TCP-протокол  
-                if proto == 6:
+                    self.packet_queue.put(Packet_list[-1])
+
+                if proto == 6:  # TCP
                     NumPacket += 1
                     pinf[5] = 'TCP'
                     pinf[8], pinf[9], pinf[11], \
@@ -134,14 +145,15 @@ class Sniffer:
                     pinf[16] = str((flags & 2) >> 1)
                     pinf[17] = str(flags & 1)
                     Packet_list.append(PacketInf(pinf))
-                    # mes_prob = si.find_session_location(Packet_list[-1])
-                    si.find_session_location(Packet_list[-1])
-                    # self.print_packet_information(Packet_list[-1], [0])
+                    self.packet_queue.put(Packet_list[-1])
+
             if keyboard.is_pressed('space'):
                 self.connection.close()
+                self.packet_queue.put(None)
+                processing_thread.join()
+                si.rest_data_process()
                 print('\nЗавершение программы...\n')
                 break
-
 
     # Определение параметров перехвата трафика
     def traffic_interception(self):

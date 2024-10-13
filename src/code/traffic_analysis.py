@@ -41,7 +41,7 @@ class TrafficAnalysis:
         for p in Packet_list:
             self.IPList.add(p.ip_src)
             self.IPList.add(p.ip_dest)
-        self.IPList = list(self.IPList)
+        self.IPList = sorted(list(self.IPList), key=lambda ip: list(map(int, ip.split('.'))))
     
 
     # Получение общих портов относительно текущего IP-адреса
@@ -51,7 +51,7 @@ class TrafficAnalysis:
             if pkt.ip_src == curIP or pkt.ip_dest == curIP:
                 ports.add(pkt.port_src)
                 ports.add(pkt.port_dest)
-        return list(ports)
+        return sorted(list(ports))
 
 
     # Вывод пар (число, IP-адрес/порт) для
@@ -84,7 +84,7 @@ class TrafficAnalysis:
         # print(f'Sessions len = {len(Session_list)}:')
         # for el in Session_list:
         #     print(f"({el.initiator}, {el.target})", end=' ')
-        # si.clear_end_sessions()
+        # si.clear_unwanted_sessions()
         # print(f'after clean Sessions len = {len(Session_list)}:')
         # for el in Session_list:
         #     print(f"({el.initiator}, {el.target})", end=' ')
@@ -93,7 +93,8 @@ class TrafficAnalysis:
         # si.print_inf_about_sessions()
         si = SessionInitialization2()
         print(f'Sessions len = {len(Session_list)}:')
-        si.clear_end_sessions()
+        si.clear_unwanted_sessions()
+        print(f'After Sessions len = {len(Session_list)}:')
         si.print_inf_about_sessions()
         strt = Packet_list[0].timePacket
         fin = Packet_list[-1].timePacket
