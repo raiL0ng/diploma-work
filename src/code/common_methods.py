@@ -58,6 +58,7 @@ def get_new_session(pkt, iplist):
             return False
     return True
 
+#TODO вернуть try except
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
 def read_from_file():
@@ -66,22 +67,22 @@ def read_from_file():
     FileName = input()
     if Packet_list:
         return
-    try:
+    # try:
         # si = SessionInitialization()
-        si = SessionInitialization2()
-        iplist = set()
-        with open(FileName, 'r') as f:
-            while True:
-                inf = f.readline()
-                if not inf:
-                    break
-                row_processing(inf)
-                if get_new_session(Packet_list[-1], iplist):
-                    iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
-                if si.curTime is None:
-                    si.add_start_time(Packet_list[-1].timePacket) 
-                si.find_session_location(Packet_list[-1])
-        si.rest_data_process()
-        print(f"IPS = {iplist} len = {len(iplist)}")
-    except:
-        print(f'\nОшибка считывания файла {FileName}!\n')
+    si = SessionInitialization2()
+    iplist = set()
+    with open(FileName, 'r') as f:
+        while True:
+            inf = f.readline()
+            if not inf:
+                break
+            row_processing(inf)
+            if get_new_session(Packet_list[-1], iplist):
+                iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
+            if si.curTime is None:
+                si.add_start_time(Packet_list[-1].timePacket) 
+            si.find_session_location(Packet_list[-1])
+    si.rest_data_process()
+    # print(f"IPS = {iplist} len = {len(iplist)}")
+    # except:
+    #     print(f'\nОшибка считывания файла {FileName}!\n')

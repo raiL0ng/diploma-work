@@ -1,7 +1,11 @@
 import time
+import numpy as np
 from variable_definition import Packet_list, Session_list, line
 from colorama import init, Back, Fore
 from math import sqrt
+from keras.models import load_model
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
 
 
 init(autoreset=True)
@@ -510,14 +514,14 @@ class Session2:
             return None
         l = len(self.intervalsList)
         self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
-        print(f"intervals = {l} pktSizeDstIP1 = {len(self.pktSizeDestIP1)} pktSizeDstIP2 = {len(self.pktSizeDestIP2)} winsize = {len(self.winSizeList)} cntPkt = {self.cntPkt} CNT = {self.CNT}")
+        # print(f"intervals = {l} pktSizeDstIP1 = {len(self.pktSizeDestIP1)} pktSizeDstIP2 = {len(self.pktSizeDestIP2)} winsize = {len(self.winSizeList)} cntPkt = {self.cntPkt} CNT = {self.CNT}")
         if self.stateActive and self.cntPkt < 2:
             self.stateActive = False
-            print( f'Время last:'
-                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
-            print( f'Время strt:'
-                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
-            print( f'Время total: {self.totalTime}' )
+            # print( f'Время last:'
+            #      , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
+            # print( f'Время strt:'
+            #      , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
+            # print( f'Время total: {self.totalTime}' )
             return None
         # Вычисление средней задержки
         sum = 0
@@ -605,19 +609,47 @@ class SessionInitialization2:
         # self.strtTime = strt
         self.known_ports = [21, 22, 23, 25, 53, 80, 88, 161, 443, 873]
         self.curTime = None
+        self.model = None
+        self.train_mode = True
+        self.x_input = []
+        self.cntPeriods = 0
 
     def add_start_time(self, strt):
         self.curTime = strt + 15
+
+
+    # Запись входных векторов в файл
+    def write_data_to_file(self, filename='x_input.log'):
+        with open(filename, 'a+') as f:
+            f.write(f"{self.cntPeriods}-th\n")
+            for ports, row in self.x_input:
+                f.write(f'{ports}:')
+                for el in row:
+                    f.write(f'{el},')
+                f.write('!\n')
+
+
+    # Загрузка модели для дальнейшей работы с ней
+    def load_LSTM_model(self, path='../model_directory/model.h5'):
+        self.model = load_model(path)
 
 
     def find_session_location(self, pkt) -> None:
         global Session_list
         isNewSession = True
         if pkt.timePacket > self.curTime:
+            self.x_input.clear()
+            self.cntPeriods += 1
             for s in Session_list:
                 vec = s.get_result()
+                if vec is not None:
+                    self.x_input.append((s.ports, vec))
                 # print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
-                # Здесь должна быть нейронка
+            if self.train_mode:
+                self.write_data_to_file()
+            else:
+                #TODO здесь должно быть предсказание
+                pass
             self.curTime += 15
         for s in Session_list:
             if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips:
@@ -634,7 +666,7 @@ class SessionInitialization2:
                 Session_list.append(Session2(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
             Session_list[-1].update_data(pkt)
 
-
+    # TODO добавить сюда тоже вызов нейронки
     def rest_data_process(self):
         global Session_list
         for s in Session_list:
@@ -680,13 +712,3 @@ class SessionInitialization2:
             #     print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия с вероятностью {s.prob}%!!!')
             cnt += 1
         print(f'{line}{line}\n')
-    
-    def test_data(self):
-        pass
-
-    def write_vector(self, vec):
-        try:
-            with open("metrics.log", "a+") as f:
-                f.write(vec)
-        except:
-            print(f"Не удалось записать вектор {vec}")

@@ -121,9 +121,9 @@ class Sniffer:
             pinf[4], pinf[3], protocol = self.get_ethernet_frame(raw_data)
             if protocol == 8:
                 _, proto, pinf[6], pinf[7], data_ipv4 = self.get_ipv4_data(raw_data[14:])
-                if NumPacket > curcnt:
-                    curcnt += 1000
-                    si.clear_unwanted_sessions()
+                # if NumPacket > curcnt:
+                #     curcnt += 1000
+                #     si.clear_unwanted_sessions()
 
                 if proto == 17:  # UDP
                     NumPacket += 1
