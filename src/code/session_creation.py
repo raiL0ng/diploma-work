@@ -607,7 +607,7 @@ class SessionInitialization2:
 
     def __init__(self) -> None:
         # self.strtTime = strt
-        self.known_ports = [21, 22, 23, 25, 53, 80, 88, 161, 443, 873]
+        self.known_ports = {21, 22, 23, 25, 53, 80, 88, 161, 443, 873}
         self.curTime = None
         self.model = None
         self.train_mode = True
@@ -621,7 +621,7 @@ class SessionInitialization2:
     # Запись входных векторов в файл
     def write_data_to_file(self, filename='x_input.log'):
         with open(filename, 'a+') as f:
-            f.write(f"{self.cntPeriods}-th\n")
+            f.write(f"{self.cntPeriods}-th interval\n")
             for ports, row in self.x_input:
                 f.write(f'{ports}:')
                 for el in row:
@@ -630,7 +630,7 @@ class SessionInitialization2:
 
 
     # Загрузка модели для дальнейшей работы с ней
-    def load_LSTM_model(self, path='../model_directory/model.h5'):
+    def load_LSTM_model(self, path='../model_directory/model.keras'):
         self.model = load_model(path)
 
 

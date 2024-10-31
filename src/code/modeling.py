@@ -2,6 +2,7 @@ from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense
 from keras.preprocessing.sequence import pad_sequences
 import numpy as np
+import os
 
 class ModelInit:
 
@@ -23,12 +24,13 @@ class ModelInit:
         self.model.add(Dense(units=2, activation='softmax'))
         # Компиляция модели
         self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        print('\nМодель LSTM определена успешно')
 
 
     # Запись входных векторов в файл
     def write_data_to_file(self, filename='x_input.log'):
         with open(filename, 'a+') as f:
-            f.write(f"{self.cntPeriods}-th\n")
+            f.write(f"{self.cntPeriods}-th interval\n")
             for ports, row in self.x_input:
                 f.write(f'{ports}:')
                 for el in row:
@@ -48,8 +50,8 @@ class ModelInit:
             for row in data:
                 if '-th' in row:
                     if cur_xs:
-                        self.x_input.append(cur_xs)
-                        self.y_input.append(cur_ys)
+                        self.x_input.append(np.array(cur_xs))
+                        self.y_input.append(np.array(cur_ys))
                     cur_xs.clear()
                     cur_ys.clear()
                 elif ':' in row:
@@ -60,11 +62,43 @@ class ModelInit:
                     values = row.split(':')[1].split(',')
                     tmp = [float(el) for el in values if el and '!' not in el]
                     cur_xs.append(tmp)
-
             if cur_xs:
-                self.x_input.append(cur_xs)
-                self.y_input.append(cur_ys)
+                self.x_input.append(np.array(cur_xs))
+                self.y_input.append(np.array(cur_ys))
 
+
+    def save_vectors(self, filename='vectors.log'):
+        n = len(self.x_input)
+        num = 1
+        with open(filename, 'a+') as f:
+            for i in range(n):
+                m = len(self.x_input[i])
+                for j in range(m):
+                    xs_data = ','.join(map(str, self.x_input[i][j]))
+                    ys_data = ','.join(map(str, self.y_input[i][j]))
+                    f.write(f'{num}:{xs_data}---{ys_data}\n')
+                    num += 1
+
+
+    def load_selected_vectors(self, nums, filename='vectors.log'):
+        cur_x = []
+        cur_y = []
+        
+        with open(filename, 'r') as f:
+            for line in f:
+                num = int(line.split(':')[0])
+                
+                if num in nums:
+                    xs_data, ys_data = line.strip().split('---')
+                    xs_data = list(map(float, xs_data.split(':')[1].split(',')))
+                    ys_data = list(map(float, ys_data.split(',')))
+                    cur_x.append(xs_data)
+                    cur_y.append(ys_data)
+        cur_x = np.array(cur_x).reshape(-1, 18)  # исходя из размерности данных в x_input
+        cur_y = np.array(cur_y).reshape(-1, 2)   # исходя из размерности данных в y_input
+        
+        return cur_x, cur_y
+    
 
     # Форматирование данных и обучение модели
     def train_model(self, epochs=50, batch_size=16):
@@ -95,52 +129,124 @@ class ModelInit:
     def get_prediction(self, vec):
         prediction = self.model.predict(vec)
         print("Предсказание:", prediction)
-        if prediction[0, 0, 0] > 0.5 and prediction[0, 0, 1] < 0.5:
-            print('Обнаружена RDP-сессия!!!')
+        for i in range(prediction.shape[1]):
+            if prediction[0, i, 0] > 0.5 and prediction[0, i, 1] < 0.5:
+                print('Обнаружена RDP-сессия!!!')
+            else:
+                print('Данная сессия не является RDP')
+
+
+    def save_model(self, filename='model.keras'):
+        os.makedirs('..\model_directory', exist_ok=True)
+        file_path = os.path.join('..\model_directory', filename)
+        self.model.save(file_path)
+        print(f"\nМодель успешно сохранена в {file_path}")
+
+
+    def load_LSTM_model(self, filename='model.keras'):
+        try:
+            self.model = load_model(f'../model_directory/{filename}')
+        except Exception as ex:
+            print(ex)
+            return False
         else:
-            print('Данная сессия не является RDP')
-
-
-    def save_model(self, path='../model_directory/model.h5'):
-        self.model.save(path)
-        print(f"\nМодель успешно сохранена в {path}")
-
-
-    def load_LSTM_model(self, path='../model_directory/model.h5'):
-        self.model = load_model(path)
+            print('\nМодель успешно загружена!')
+            return True
 
 
 def main():
-    print('\n1. Обучение модели')
-    print('\n2. Проверка данных на корректность')
-    bl = input('Выберите опцию: ')
-    if bl == '1':
-        pass
-    elif bl == '2':
-        pass
+    while True:
+        print('\n1. Обучение модели'
+              '\n2. Проверка данных на корректность'
+              '\n3. Выход')
+        bl = input('Выберите опцию: ')
+        if bl == '1':
+            bl1 = input('Обучить заново (0) Продолжить обучение (1): ')
+            if bl1 == '0':
+                c = ModelInit()
+                c.define_model()
+                filename = input('\nНазвание файла, где лежат входные вектора (по умолчанию x_input.log): ')
+                if filename != '':
+                    c.read_data_from_file(filename)
+                else:
+                    c.read_data_from_file()
+                c.train_model()
+                filename = input('\nСохранить модель в файл? (по умолчанию /model_directory/model.keras): ')
+                if filename != '':
+                    c.save_model(filename)
+            elif bl == '1':
+                c = ModelInit()
+                filename = input('Название файла для модели: ')
+                if filename != '':
+                    fl = c.load_LSTM_model(filename)
+                else:
+                    fl =c.load_LSTM_model()
+                if not fl:
+                    continue
+                xs_data = input('\nНазвание файла, где лежат входные вектора (по умолчанию x_input.log): ')
+                if xs_data != '':
+                    c.read_data_from_file(xs_data)
+                else:
+                    c.read_data_from_file()
+                c.train_model()
+                fl = input('\nСохранить модель в файл? (1 - да): ')
+                if fl == '1':
+                    if filename != '':
+                        c.save_model(filename)
+                    else:
+                        c.save_model()
+        elif bl == '2':
+            c = ModelInit()
+            filename = input('Название файла для модели: ')
+            if filename != '':
+                fl = c.load_LSTM_model(filename)
+            else:
+                fl = c.load_LSTM_model()
+            if not fl:
+                continue
+            xs_data = input('\nНазвание файла, где лежат входные вектора (по умолчанию x_input.log): ')
+            if xs_data != '':
+                c.read_data_from_file(xs_data)
+            else:
+                c.read_data_from_file()
+            c.save_vectors()
+            nums = list(map(int, input('Введите номера строк: ').split()))
+            if nums == '':
+                continue
+            xs, ys = c.load_selected_vectors(nums)
+            print(xs, '\n', ys)
+            xs = np.expand_dims(xs, axis=0)
+            ys = np.expand_dims(ys, axis=0)
+            print('\nИзначальные выходные данные:\n', ys)
+            c.get_prediction(xs)
+        elif bl == '3':
+            break
 
-    print('Выберите опцию:')
+
 if __name__ == '__main__':
-    c = ModelInit()
-    c.read_data_from_file('x_input.log')
-    print(len(c.x_input), len(c.y_input))
-    c.define_model()
-    # c.data_preparation()
-    c.train_model(epochs=50, batch_size=50)
-    xtmp = np.array([[7.09155798e-01, 1.47045898e+00, 1.48380327e+00, 2.20483541e-02,
-    1.37500000e+00, 7.27272749e-01, 0.00000000e+00, 1.38181824e+02,
-    7.96250000e+01, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-    0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-    0.00000000e+00, 0.00000000e+00]])
-    xtmp = xtmp.reshape((1, 1, 18))
-    c.get_prediction(xtmp)
-    xtmp = np.array([[[2.39968300e-03, 0.00000000e+00, 0.00000000e+00, 2.39968300e-03,
-   1.00000000e+00, 1.00000000e+00, 0.00000000e+00, 5.90000000e+02,
-   3.29000000e+02, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-   0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-   0.00000000e+00, 0.00000000e+00]]])
-    xtmp = xtmp.reshape((1, 1, 18))
-    c.get_prediction(xtmp)
-    xtmp = np.array([[[0.012621216063803814,0.10497452924380339,0.02294456593222675,0.00013065338134765625,0.3548387096774194,2.8181818181818183,0.0,114.42857142857143,897.4043778801844,0.10714285714285714,0.9539170506912442,1.0,1.0,0.10714285714285714,0.9539170506912442,560,1002.5263605442177,39.266666666666666]]])
-    xtmp.reshape((1, 1, 18))
-    c.get_prediction(xtmp)
+    main()
+    # c = ModelInit()
+    # c.read_data_from_file('xwin2.log')
+    # print(len(c.x_input), len(c.y_input))
+    # print(c.x_input, c.y_input)
+    # c.save_vectors()
+    # c.define_model()
+#     # c.data_preparation()
+#     c.train_model(epochs=50, batch_size=50)
+#     xtmp = np.array([[7.09155798e-01, 1.47045898e+00, 1.48380327e+00, 2.20483541e-02,
+#     1.37500000e+00, 7.27272749e-01, 0.00000000e+00, 1.38181824e+02,
+#     7.96250000e+01, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+#     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+#     0.00000000e+00, 0.00000000e+00]])
+#     xtmp = xtmp.reshape((1, 1, 18))
+#     c.get_prediction(xtmp)
+#     xtmp = np.array([[[2.39968300e-03, 0.00000000e+00, 0.00000000e+00, 2.39968300e-03,
+#    1.00000000e+00, 1.00000000e+00, 0.00000000e+00, 5.90000000e+02,
+#    3.29000000e+02, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+#    0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+#    0.00000000e+00, 0.00000000e+00]]])
+#     xtmp = xtmp.reshape((1, 1, 18))
+#     c.get_prediction(xtmp)
+#     xtmp = np.array([[[0.012621216063803814,0.10497452924380339,0.02294456593222675,0.00013065338134765625,0.3548387096774194,2.8181818181818183,0.0,114.42857142857143,897.4043778801844,0.10714285714285714,0.9539170506912442,1.0,1.0,0.10714285714285714,0.9539170506912442,560,1002.5263605442177,39.266666666666666]]])
+#     xtmp.reshape((1, 1, 18))
+#     c.get_prediction(xtmp)
