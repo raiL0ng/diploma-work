@@ -1,4 +1,4 @@
-from session_creation import SessionInitialization, SessionInitialization2
+from session_creation import SessionInitialization
 from variable_definition import Packet_list
 from package_parameters import PacketInf
 
@@ -68,8 +68,7 @@ def read_from_file():
     if Packet_list:
         return
     # try:
-        # si = SessionInitialization()
-    si = SessionInitialization2()
+    si = SessionInitialization()
     iplist = set()
     with open(FileName, 'r') as f:
         while True:
@@ -82,7 +81,7 @@ def read_from_file():
             if si.curTime is None:
                 si.add_start_time(Packet_list[-1].timePacket) 
             si.find_session_location(Packet_list[-1])
-    si.rest_data_process()
+    si.packet_preparation()
     # print(f"IPS = {iplist} len = {len(iplist)}")
     # except:
     #     print(f'\nОшибка считывания файла {FileName}!\n')

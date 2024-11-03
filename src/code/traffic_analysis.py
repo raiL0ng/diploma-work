@@ -1,6 +1,6 @@
 import time
 from variable_definition import Packet_list, Object_list, Labels_list, Session_list
-from session_creation import SessionInitialization, Session, SessionInitialization2, Session2
+from session_creation import SessionInitialization
 from package_parameters import ExploreObject
 from chart_creation import ChartCreation
 
@@ -91,7 +91,7 @@ class TrafficAnalysis:
         # for s in Session_list:
         #     s.fin_rdp_check()
         # si.print_inf_about_sessions()
-        si = SessionInitialization2()
+        si = SessionInitialization()
         print(f'Sessions len = {len(Session_list)}:')
         si.clear_unwanted_sessions()
         print(f'After Sessions len = {len(Session_list)}:')

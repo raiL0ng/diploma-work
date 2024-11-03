@@ -70,7 +70,7 @@ class ModelInit:
     def save_vectors(self, filename='vectors.log'):
         n = len(self.x_input)
         num = 1
-        with open(filename, 'a+') as f:
+        with open(filename, 'w') as f:
             for i in range(n):
                 m = len(self.x_input[i])
                 for j in range(m):

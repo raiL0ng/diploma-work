@@ -5,7 +5,7 @@ from time import time
 from variable_definition import Packet_list, line, Phrases_signs
 from common_methods import write_to_file
 from package_parameters import PacketInf
-from session_creation import SessionInitialization, SessionInitialization2
+from session_creation import SessionInitialization
 
 
 class Sniffer:
@@ -66,46 +66,28 @@ class Sniffer:
             data = ''.join(r'\x{:02x}'.format(el) for el in data)
         return data
 
-    # Вывод информации о перехваченных пакетах
-    def print_packet_information(self, obj, mes_prob):
-        if self.findRDP:
-            if 5 not in mes_prob[0] or mes_prob[1] <= 50:
-                return
-        print( f'{line}Пакет No{obj.numPacket}{line}\n'
-             , 'Время перехвата: '
-             , time.strftime( '%m:%d:%Y %H:%M:%S'
-                            , time.localtime(obj.timePacket) ) + '\n'
-             , f'Протокол: {obj.protoType}\n'
-             , f'MAC-адрес отправителя: {obj.mac_src}\n'
-             , f'MAC-адрес получателя: {obj.mac_dest}\n'
-             , f'Отправитель: {obj.ip_src}:{obj.port_src}\n'
-             , f'Получатель: {obj.ip_dest}:{obj.port_dest}')
-        if obj.protoType == 'TCP':
-            print( f' Порядковый номер: {obj.seq}; Номер подтверждения: {obj.ack}\n' +
-                f' SYN:{obj.fl_syn}; ACK:{obj.fl_ack}; PSH:{obj.fl_psh}; ' +
-                f'RST:{obj.fl_rst}; FIN:{obj.fl_fin}\n')
-        print('Признаки: ', end='')
-        for i in mes_prob[0]:
-            print(Phrases_signs[i], end='; ')
-        print(f'\nВероятность RDP-сессии {mes_prob[1]}%')
-
 
     # Перехват трафика и вывод информации в консоль
     def start_to_listen(self):
-        global Packet_list
-        NumPacket = 1
-        curcnt = 1000
-        pinf = [''] * 19
-        # si = SessionInitialization()
-        si = SessionInitialization2()
-
+        
         def packet_processing():
             while True:
                 pkt = self.packet_queue.get()
                 if pkt is None:
                     break  # Завершаем обработку
-                si.find_session_location(pkt)
+                fl = si.find_session_location(pkt)
+                si.print_packet_information(pkt, fl, self.findRDP)
                 self.packet_queue.task_done()
+
+        global Packet_list
+        NumPacket = 1
+        curcnt = 1000
+        pinf = [''] * 19
+        # si = SessionInitialization()
+        si = SessionInitialization(False)
+        if self.findRDP:
+            if not si.load_LSTM_model():
+                return
 
         # Запускаем поток для обработки пакетов
         processing_thread = threading.Thread(target=packet_processing)
@@ -151,7 +133,7 @@ class Sniffer:
                 self.connection.close()
                 self.packet_queue.put(None)
                 processing_thread.join()
-                si.rest_data_process()
+                si.packet_preparation()
                 print('\nЗавершение программы...\n')
                 break
 
