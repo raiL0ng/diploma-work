@@ -68,7 +68,7 @@ def read_from_file():
     if Packet_list:
         return
     # try:
-    si = SessionInitialization()
+    si = SessionInitialization(False)
     iplist = set()
     with open(FileName, 'r') as f:
         while True:

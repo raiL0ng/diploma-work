@@ -211,6 +211,7 @@ class Session:
     def rdp_prob_check(self, val0, val1):
         if val0 > 0.5 and val1 < 0.5:
             self.rdpProb.append(True)
+            self.cntTr += 1
         else:
             self.rdpProb.append(False)
         l = len(self.rdpProb)
@@ -222,12 +223,13 @@ class Session:
 class SessionInitialization:
 
 
-    def __init__(self, fl_train=True) -> None:
+    def __init__(self, fl_find_rdp=False, fl_train=True) -> None:
         # self.strtTime = strt
         self.known_ports = {21, 22, 23, 25, 53, 80, 88, 161, 443, 873}
         self.curTime = None
         self.model = None
         self.train_mode = fl_train
+        self.findRDP = fl_find_rdp
         self.x_input = []
         self.cntPeriods = 0
 
@@ -260,20 +262,34 @@ class SessionInitialization:
             return True
 
     
-    def get_prediction(self):
+    def get_prediction(self, indexes):
         pred = self.model.predict(self.x_input)
-        i = 0
-        for s in Session_list:
-            if s.stateActive:
-                continue
-            s.rdp_prob_check(pred[0, i, 0], pred[0, i, 1])
-            i += 1
+        j = 0
+        for i in indexes:
+            Session_list[i].rdp_prob_check(pred[0, j, 0], pred[0, j, 1])
+            j += 1
 
 
     def packet_preparation(self):
-        self.x_input.clear()
+        self.x_input = []
         self.cntPeriods += 1
-        if self.train_mode:
+        # Если поставлен флаг для выявления RDP-трафика
+        # то происходит работа с нейронной сетью
+        if self.findRDP:
+            ids = []
+            for i in range(len(Session_list)):
+                vec = Session_list[i].get_result()
+                if vec is not None:
+                    ids.append(i)
+                    self.x_input.append(vec)
+            self.x_input = np.array(self.x_input)
+            self.x_input = np.expand_dims(self.x_input, axis=0)
+            if len(self.x_input.shape) != 3:
+                print(self.x_input)
+                return
+            self.get_prediction(ids)
+        # Режим обучения
+        elif self.train_mode:
             for s in Session_list:
                 vec = s.get_result()
                 if vec is not None:
@@ -283,12 +299,6 @@ class SessionInitialization:
         else:
             for s in Session_list:
                 vec = s.get_result()
-                if vec is not None:
-                    self.x_input.append(vec)
-            self.x_input = np.array(self.x_input)
-            self.x_input = np.expand_dims(self.x_input, axis=0)
-            self.get_prediction()
-
 
     def find_session_location(self, pkt) -> bool:
         global Session_list
@@ -315,8 +325,8 @@ class SessionInitialization:
 
 
     # Вывод информации о перехваченных пакетах
-    def print_packet_information(self, pkt, pred_res, find_rdp):
-        if find_rdp and not pred_res:
+    def print_packet_information(self, pkt, pred_res):
+        if self.findRDP and not pred_res:
             return
         print( f'{line}Пакет No{pkt.numPacket}{line}\n'
              , 'Время перехвата: '
@@ -331,7 +341,7 @@ class SessionInitialization:
             print( f' Порядковый номер: {pkt.seq}; Номер подтверждения: {pkt.ack}\n' +
                 f' SYN:{pkt.fl_syn}; ACK:{pkt.fl_ack}; PSH:{pkt.fl_psh}; ' +
                 f'RST:{pkt.fl_rst}; FIN:{pkt.fl_fin}\n')
-        if find_rdp and pred_res:
+        if self.findRDP and pred_res:
             print(f'{line} Обнаружена RDP-сессия! {line}')
         # print(f'\nВероятность RDP-сессии {mes_prob[1]}%')
 

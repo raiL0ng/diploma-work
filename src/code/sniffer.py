@@ -13,7 +13,8 @@ class Sniffer:
     def __init__(self) -> None:
         self.connection = None
         self.findRDP = False
-        self.packet_queue = queue.Queue()  # Очередь для хранения пакетов
+        self.packet_queue = queue.Queue()
+        self.error_load_model = False
 
     # Получение ethernet-кадра
     def get_ethernet_frame(self, data):
@@ -76,17 +77,17 @@ class Sniffer:
                 if pkt is None:
                     break  # Завершаем обработку
                 fl = si.find_session_location(pkt)
-                si.print_packet_information(pkt, fl, self.findRDP)
+                si.print_packet_information(pkt, fl)
                 self.packet_queue.task_done()
 
         global Packet_list
         NumPacket = 1
         curcnt = 1000
         pinf = [''] * 19
-        # si = SessionInitialization()
-        si = SessionInitialization(False)
+        si = SessionInitialization(self.findRDP, False)
         if self.findRDP:
             if not si.load_LSTM_model():
+                self.error_load_model = True
                 return
 
         # Запускаем поток для обработки пакетов
@@ -159,5 +160,6 @@ class Sniffer:
         else:
             print('\nНачался процесс захвата трафика...\n')
             self.start_to_listen()
-        print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')
-        write_to_file()
+        if not self.error_load_model:
+            print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')
+            write_to_file()
