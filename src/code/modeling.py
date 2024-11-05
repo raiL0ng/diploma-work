@@ -55,7 +55,7 @@ class ModelInit:
                     cur_xs.clear()
                     cur_ys.clear()
                 elif ':' in row:
-                    if row.find('3389') != -1:
+                    if '(3389' in row or '3389)' in row:
                         cur_ys.append([1, 0])
                     else:
                         cur_ys.append([0, 1])
@@ -137,8 +137,8 @@ class ModelInit:
 
 
     def save_model(self, filename='model.keras'):
-        os.makedirs('..\model_directory', exist_ok=True)
-        file_path = os.path.join('..\model_directory', filename)
+        os.makedirs('../model_directory', exist_ok=True)
+        file_path = os.path.join('../model_directory', filename)
         self.model.save(file_path)
         print(f"\nМодель успешно сохранена в {file_path}")
 
@@ -197,7 +197,7 @@ def main():
                         c.save_model()
         elif bl == '2':
             c = ModelInit()
-            filename = input('Название файла для модели: ')
+            filename = input('Название файла для модели (по умолчанию model.keras): ')
             if filename != '':
                 fl = c.load_LSTM_model(filename)
             else:
@@ -225,28 +225,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # c = ModelInit()
-    # c.read_data_from_file('xwin2.log')
-    # print(len(c.x_input), len(c.y_input))
-    # print(c.x_input, c.y_input)
-    # c.save_vectors()
-    # c.define_model()
-#     # c.data_preparation()
-#     c.train_model(epochs=50, batch_size=50)
-#     xtmp = np.array([[7.09155798e-01, 1.47045898e+00, 1.48380327e+00, 2.20483541e-02,
-#     1.37500000e+00, 7.27272749e-01, 0.00000000e+00, 1.38181824e+02,
-#     7.96250000e+01, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-#     0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-#     0.00000000e+00, 0.00000000e+00]])
-#     xtmp = xtmp.reshape((1, 1, 18))
-#     c.get_prediction(xtmp)
-#     xtmp = np.array([[[2.39968300e-03, 0.00000000e+00, 0.00000000e+00, 2.39968300e-03,
-#    1.00000000e+00, 1.00000000e+00, 0.00000000e+00, 5.90000000e+02,
-#    3.29000000e+02, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-#    0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
-#    0.00000000e+00, 0.00000000e+00]]])
-#     xtmp = xtmp.reshape((1, 1, 18))
-#     c.get_prediction(xtmp)
-#     xtmp = np.array([[[0.012621216063803814,0.10497452924380339,0.02294456593222675,0.00013065338134765625,0.3548387096774194,2.8181818181818183,0.0,114.42857142857143,897.4043778801844,0.10714285714285714,0.9539170506912442,1.0,1.0,0.10714285714285714,0.9539170506912442,560,1002.5263605442177,39.266666666666666]]])
-#     xtmp.reshape((1, 1, 18))
-#     c.get_prediction(xtmp)
