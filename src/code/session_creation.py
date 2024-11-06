@@ -39,7 +39,14 @@ class Session:
         # Для подсчета всего TCP-трафика
         self.cntPktTCPDestIP1 = 0
         self.cntPktTCPDestIP2 = 0
-
+        # Для подсчета флагов SYN, FIN, RST
+        self.cntSYNSrc = 0
+        self.cntSYNDest = 0
+        self.cntFINSrc = 0
+        self.cntFINDest = 0
+        self.cntRSTSrc = 0
+        self.cntRSTDest = 0
+        
         self.winSizeList = []
         self.rdpProb = []
         self.cntTr = 0
@@ -70,6 +77,12 @@ class Session:
                     self.cntPSHDestIP1 += 1
                 if pkt.fl_ack == '1':
                     self.cntACKDestIP1 += 1
+                if pkt.fl_syn == '1':
+                    self.cntSYNDest += 1
+                if pkt.fl_fin == '1':
+                    self.cntFINDest += 1
+                if pkt.fl_rst == '1':
+                    self.cntRSTDest += 1
                 self.cntPktTCPDestIP1 += 1
             if pkt.ip_dest == self.ips[1]:
                 if pkt.fl_psh == '1':
@@ -77,7 +90,14 @@ class Session:
                 if pkt.fl_ack == '1':
                     self.cntACKDestIP2 += 1
                     self.cntACKSrcIP1 += 1
+                if pkt.fl_syn == '1':
+                    self.cntSYNSrc += 1
+                if pkt.fl_fin == '1':
+                    self.cntFINSrc += 1
+                if pkt.fl_rst == '1':
+                    self.cntRSTSrc += 1
                 self.cntPktTCPDestIP2 += 1
+            # TODO надо подумать что делать с этими флагами соединения
             if pkt.fl_fin == '1' or pkt.fl_rst == '1':
                 self.forceFin = True
             # Подсчет размеров окна
@@ -102,6 +122,12 @@ class Session:
         self.cntACKSrcIP1 = 0
         self.cntPktTCPDestIP1 = 0
         self.cntPktTCPDestIP2 = 0
+        self.cntSYNSrc = 0
+        self.cntSYNDest = 0
+        self.cntFINSrc = 0
+        self.cntFINDest = 0
+        self.cntRSTSrc = 0
+        self.cntRSTDest = 0
         
         self.winSizeList.clear()
         self.cntPktUDP = 0
@@ -112,6 +138,31 @@ class Session:
         if denom == 0:
             return 0
         return num / denom
+
+
+    def test_print_parametrers(self):
+        print(f"intervalsList = {self.intervalsList}\n"
+              f"cntPktSrcIP1 = {self.cntPktSrcIP1}\n"
+              f"cntPktDestIP1 = {self.cntPktDestIP1}\n"
+              f"self.pktSizeDestIP1 = {self.pktSizeDestIP1}\n"
+              f"self.pktSizeDestIP2 = {self.pktSizeDestIP2}\n"
+              f"self.cntPSHDestIP1 = {self.cntPSHDestIP1}\n"
+              f"self.cntPSHDestIP2 = {self.cntPSHDestIP2}\n"
+              f"self.cntACKDestIP1 = {self.cntACKDestIP1}\n"
+              f"self.cntACKDestIP2 = {self.cntACKDestIP2}\n"
+              f"self.cntACKSrcIP1 = {self.cntACKSrcIP1}\n"
+              f"self.cntPktTCPDestIP1 = {self.cntPktTCPDestIP1}\n"
+              f"self.cntPktTCPDestIP2 = {self.cntPktTCPDestIP2}\n"
+              f"self.cntSYNSrc = {self.cntSYNSrc}\n"
+              f"self.cntSYNDest = {self.cntSYNDest}\n"
+              f"self.cntFINSrc = {self.cntFINSrc}\n"
+              f"self.cntFINDest = {self.cntFINDest}\n"
+              f"self.cntRSTSrc = {self.cntRSTSrc}\n"
+              f"self.cntRSTDest = {self.cntRSTDest}\n"
+              f"self.winSizeList = {self.winSizeList}\n"
+              f"self.cntPktUDP = {self.cntPktUDP}\n"
+              f"self.cntPktUDP = {self.cntPktUDP}\n"
+              f"self.cntPkt = {self.cntPkt}")
 
 
     def get_result(self):
@@ -187,6 +238,9 @@ class Session:
         result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntACKDestIP2))
         # Вычисление разности числа исходящих и входящих ACK-флагов IP1
         result.append(abs(self.cntACKDestIP1 - self.cntACKSrcIP1))
+        # Вычисление отношения количества флагов SYN, FIN, RST
+        result.append(self.ratio_calc(self.cntSYNSrc + 1, self.cntFINSrc + self.cntRSTSrc + 1))
+        result.append(self.ratio_calc(self.cntSYNDest + 1, self.cntFINDest + self.cntRSTDest + 1))
         # Вычисление среднего размера экрана
         l = len(self.winSizeList)
         if l != 0:
@@ -204,6 +258,9 @@ class Session:
             result.append(cntRatio / 15)
         else:
             result.extend([0, 0])
+        result.append(self.cntPkt)
+        # self.test_print_parametrers()
+        # print(f'result = {result}\n')
         self.clean_all_parameters()
         return result
 
@@ -293,7 +350,7 @@ class SessionInitialization:
             for s in Session_list:
                 vec = s.get_result()
                 if vec is not None:
-                    self.x_input.append((s.ports, vec))
+                    self.x_input.append(((s.ips, s.ports), vec))
                 # print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
             self.write_data_to_file()
         else:
@@ -377,14 +434,13 @@ class SessionInitialization:
                  , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.strt_time)) )
             print(f'Количество перехваченных пакетов: {s.CNT}')
             print( f'Общее время перехвата: {s.totalTime}')
-            
+            if s.isRDP:
+                print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия!!!')
             # if s.finTime == None:
             #     print(f'Время завершения соединения: нет данных')
             # else:
             #     print( f'Время завершения соединения:'
             #          , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.finTime)))
             #     print(f'Общее время соединения: {s.totalTime} сек')
-            # if s.is_rdp and s.prob > 50:
-            #     print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия с вероятностью {s.prob}%!!!')
             cnt += 1
         print(f'{line}{line}\n')
