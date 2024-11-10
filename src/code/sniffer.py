@@ -135,6 +135,7 @@ class Sniffer:
                 self.packet_queue.put(None)
                 processing_thread.join()
                 si.packet_preparation()
+                # si.print_all_predictions()
                 print('\nЗавершение программы...\n')
                 break
 

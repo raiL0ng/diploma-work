@@ -140,7 +140,7 @@ class Session:
         return num / denom
 
 
-    def test_print_parametrers(self):
+    def test_print_parameters(self):
         print(f"intervalsList = {self.intervalsList}\n"
               f"cntPktSrcIP1 = {self.cntPktSrcIP1}\n"
               f"cntPktDestIP1 = {self.cntPktDestIP1}\n"
@@ -325,6 +325,11 @@ class SessionInitialization:
         for i in indexes:
             Session_list[i].rdp_prob_check(pred[0, j, 0], pred[0, j, 1])
             j += 1
+
+
+    def print_all_predictions(self):
+        for s in Session_list:
+            print(f"All-predictions: {s.ips}::{s.ports}\narr = {s.rdpProb}")
 
 
     def packet_preparation(self):

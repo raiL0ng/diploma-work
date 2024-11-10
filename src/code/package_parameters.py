@@ -56,3 +56,4 @@ class ExploreObject:
     self.pkt_size_data_dst = None
     self.adjcIPList = None
     self.adjcPacketList = None
+    self.avg_winsize_dest = None

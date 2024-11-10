@@ -9,6 +9,8 @@ class ModelInit:
     def __init__(self) -> None:
         self.model = None
         self.train_mode = True
+        self.sizeX = 21
+        self.sizeY = 2
         self.x_input = []
         self.y_input = []
 
@@ -56,6 +58,7 @@ class ModelInit:
                     cur_ys.clear()
                 elif ':' in row:
                     if '(3389' in row or '3389)' in row:
+                    # if '(3389' in row or '3389)' in row or '(4899' in row or '4899)' in row:
                         cur_ys.append([1, 0])
                     else:
                         cur_ys.append([0, 1])
@@ -94,8 +97,8 @@ class ModelInit:
                     ys_data = list(map(float, ys_data.split(',')))
                     cur_x.append(xs_data)
                     cur_y.append(ys_data)
-        cur_x = np.array(cur_x).reshape(-1, 18)  # исходя из размерности данных в x_input
-        cur_y = np.array(cur_y).reshape(-1, 2)   # исходя из размерности данных в y_input
+        cur_x = np.array(cur_x).reshape(-1, self.sizeX)  # исходя из размерности данных в x_input
+        cur_y = np.array(cur_y).reshape(-1, self.sizeY)   # исходя из размерности данных в y_input
         
         return cur_x, cur_y
     

@@ -384,6 +384,41 @@ class ChartCreation():
         return pktAmntSrcList, pktAmntDstList, pktSizeSrcList, pktSizeDstList
 
 
+    def get_avg_window_size(self, exploreIP):
+        avgWindowSizeDest = []
+        sumDest = 0
+        cntDest = 0
+        curTime = self.strt_time + 1
+        finTime = self.fin_time + 1
+        pos = 0
+        while curTime < finTime:
+            for k in range(pos, len(Packet_list)):
+                if Packet_list[k].timePacket > curTime:
+                    if cntDest != 0:
+                        avgWindowSizeDest.append(sumDest / cntDest)
+                    else:
+                        avgWindowSizeDest.append(0)
+                    sumDest = 0
+                    cntDest = 0 
+                    pos = k
+                    break
+                if self.curPort == None:
+                    if Packet_list[k].ip_dest == exploreIP:
+                        sumDest += Packet_list[k].win_size
+                        cntDest += 1
+                else:
+                    if Packet_list[k].port_src == self.curPort or Packet_list[k].port_dest == self.curPort:
+                        if Packet_list[k].ip_dest == exploreIP:
+                            sumDest += Packet_list[k].win_size
+                            cntDest += 1
+            curTime += 1
+        if cntDest != 0:
+            avgWindowSizeDest.append(sumDest / cntDest)
+        else:
+            avgWindowSizeDest.append(0)
+        return avgWindowSizeDest
+    
+
     # Выбор опций для выбранного IP-адреса
     def start_to_plot(self):
         self.get_x_labels()
@@ -422,7 +457,8 @@ class ChartCreation():
             8. Построить график частоты SYN и FIN флагов во входящих пакетах
             9. Построить график частоты PSH флагов во входящих и исходящих пакетах
             10. Построить график частоты ACK флагов во входящих и исходящих пакетах
-            11. Вернуться к выбору IP-адреса """)
+            11. Построить график отображения среднего количества значения размеров окна
+            12. Вернуться к выбору IP-адреса """)
             bl = input()
             if bl == '1':
                 self.print_adjacent_packets()
@@ -743,4 +779,28 @@ class ChartCreation():
                 fig_2.legend()
                 plt.show()
             elif bl == '11':
+                d = self.get_avg_window_size(self.curIP)
+                Object_list[self.k].avg_winsize_dest = d
+                x = [i for i in range(0, len(Object_list[self.k].avg_winsize_dest))]
+                x_labels = [i for i in range(0, len(x), self.step)]
+                scndIP = self.get_2nd_IP_for_plot()
+                if scndIP == -1:
+                    continue
+                if scndIP != 'None':
+                    pos = self.get_pos_by_IP(scndIP)
+                    d = self.get_avg_window_size(scndIP)
+                    Object_list[pos].avg_winsize_dest = d
+                fig = plt.figure(figsize=(16, 6), constrained_layout=True)
+                f = fig.add_subplot()
+                f.grid()
+                f.set_title( 'Среднее количество размера окна, полученных за ' + \
+                             'единицу времени', fontsize=15 )
+                f.set_xlabel('Общее время перехвата трафика', fontsize=15)
+                plt.plot(x, Object_list[self.k].avg_winsize_dest, label=self.curIP + '(получатель)')
+                if scndIP != 'None':
+                    plt.plot(x, Object_list[pos].avg_winsize_dest, label=scndIP + '(получатель)')
+                plt.xticks(x_labels, self.x_axisLabels, rotation=30, fontsize=10)
+                f.legend()
+                plt.show()
+            elif bl == '12':
                 break
