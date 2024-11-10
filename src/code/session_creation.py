@@ -282,7 +282,7 @@ class SessionInitialization:
 
     def __init__(self, fl_find_rdp=False, fl_train=True) -> None:
         # self.strtTime = strt
-        self.known_ports = {21, 22, 23, 25, 53, 80, 88, 161, 443, 873}
+        self.cur_ports = set()
         self.curTime = None
         self.model = None
         self.train_mode = fl_train
@@ -362,6 +362,7 @@ class SessionInitialization:
             for s in Session_list:
                 vec = s.get_result()
 
+
     def find_session_location(self, pkt) -> bool:
         global Session_list
         isNewSession = True
@@ -375,10 +376,22 @@ class SessionInitialization:
                     isNewSession = False
                     s.update_data(pkt)
                     return s.isRDP
+                elif s.ports[1] is not None:
+                    if (pkt.port_dest in s.ports and pkt.port_src not in s.ports):
+                        isNewSession = False
+                        s.ports = (s.ports[1], None)
+                        self.cur_ports.add(pkt.port_dest)
+                        s.update_data(pkt)
+                        return s.isRDP
+                    elif (pkt.port_src in s.ports and pkt.port_dest not in s.ports):
+                        isNewSession = False
+                        s.ports = (s.ports[0], None)
+                        self.cur_ports.add(pkt.port_src)
+                        s.update_data(pkt)
+                        return s.isRDP
         if isNewSession:
-            if pkt.port_src in self.known_ports:
-                Session_list.append(Session(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, None)))
-            elif pkt.port_dest in self.known_ports:
+            if pkt.protoType == 'TCP' and pkt.fl_syn == '1' and pkt.fl_ack == '0':
+                self.cur_ports.add(pkt.port_dest)
                 Session_list.append(Session(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_dest, None)))
             else:
                 Session_list.append(Session(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
@@ -441,11 +454,5 @@ class SessionInitialization:
             print( f'Общее время перехвата: {s.totalTime}')
             if s.isRDP:
                 print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия!!!')
-            # if s.finTime == None:
-            #     print(f'Время завершения соединения: нет данных')
-            # else:
-            #     print( f'Время завершения соединения:'
-            #          , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.finTime)))
-            #     print(f'Общее время соединения: {s.totalTime} сек')
             cnt += 1
         print(f'{line}{line}\n')
