@@ -1,6 +1,8 @@
 from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense
 from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 
@@ -103,9 +105,26 @@ class ModelInit:
         
         return cur_x, cur_y
     
+    def plot_smth(self, history):
+        # Построение графика потерь (loss) на обучении и валидации
+        plt.plot(history.history['loss'], label='Training Loss')
+        # plt.plot(history.history['val_loss'], label='Validation Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
+
+        # Построение графика точности (accuracy) на обучении и валидации
+        plt.plot(history.history['accuracy'], label='Training Accuracy')
+        # plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+        plt.show()
+
 
     # Форматирование данных и обучение модели
-    def train_model(self, epochs=20, batch_size=16):
+    def train_model(self, epochs=30, batch_size=15):
         x_padded = pad_sequences(
             self.x_input,
             maxlen=None,
@@ -121,13 +140,23 @@ class ModelInit:
             padding='post',
             value=[0, 1]
         )
-
+        # Создаем раннюю остановку с оптимальными параметрами
+        early_stopping = EarlyStopping(
+            monitor='val_loss',      # Следим за потерями на валидации
+            patience=5,              # Ожидаем до 5 эпох без улучшений
+            restore_best_weights=True, # Восстанавливаем лучшие веса модели
+            min_delta=0.001           # Минимальное значимое улучшение
+        )
         # Проверка формата и формы массива
         print("Форма x_padded:", x_padded.shape)
         print("Форма y_padded:", y_padded.shape)
         # print(x_padded, y_padded)
 
-        self.model.fit(x_padded, y_padded, epochs=epochs, batch_size=x_padded.shape[0], verbose=1)
+        history = self.model.fit(x_padded, y_padded, epochs=epochs
+                                 , batch_size=batch_size, verbose=1
+                                #  , validation_split=0.2
+                                 , callbacks=[early_stopping])
+        self.plot_smth(history)
 
 
     def get_prediction(self, vec):
@@ -158,10 +187,14 @@ class ModelInit:
         print(f'Матрица ошибок (confusion matrix):\nTP : {self.confusions['TP']}' +
               f' FP : {self.confusions['FP']}\nTN : {self.confusions['TN']}' +
               f' FN : {self.confusions['FN']}\n')
-        precision = self.confusions['TP'] / (self.confusions['TP'] + self.confusions['FP'])
-        recall = self.confusions['TP'] / (self.confusions['TP'] + self.confusions['FN'])
+        precision = None
+        recall = None
+        if self.confusions['FP'] != 0.0:
+            precision = self.confusions['TP'] / (self.confusions['TP'] + self.confusions['FP'])
+        if self.confusions['FN'] != 0.0:
+            recall = self.confusions['TP'] / (self.confusions['TP'] + self.confusions['FN'])
         f1_score = None
-        if recall != 0.0 and precision != 0.0:
+        if precision is not None and recall is not None and recall != 0.0 and precision != 0.0:
             f1_score = 2 * (precision * recall) / (precision + recall)
         print(f'Точность (precision): {precision}\n'
               f'Полнота (recall): {recall}\n'
