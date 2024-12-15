@@ -1,5 +1,8 @@
-from variable_definition import Object_list
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
 from session_creation import Session_list
+from chart_creation import Object_list
 from common_methods import read_from_file, write_to_file, Packet_list
 from sniffer import Sniffer
 from traffic_analysis import TrafficAnalysis

@@ -1,9 +1,8 @@
 import time
 from common_methods import Packet_list
-from variable_definition import Object_list
 from session_creation import SessionInitialization, Session_list
 from package_parameters import ExploreObject
-from chart_creation import ChartCreation
+from chart_creation import ChartCreation, Object_list
 
 
 class TrafficAnalysis:

@@ -1,5 +1,4 @@
 from session_creation import SessionInitialization
-# from variable_definition import Packet_list
 from package_parameters import PacketInf
 
 # Список перехваченных пакетов

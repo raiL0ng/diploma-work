@@ -2,7 +2,6 @@ import socket, struct, keyboard, os
 import threading
 import queue
 from time import time
-# from variable_definition import Packet_list
 from common_methods import write_to_file, Packet_list
 from package_parameters import PacketInf
 from session_creation import SessionInitialization

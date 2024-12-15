@@ -2,9 +2,13 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from colorama import Back, Fore
-from variable_definition import Object_list
 from common_methods import Packet_list
 from math import sqrt
+
+
+# Список исследуемых объектов (IP-порт)
+Object_list = []
+
 
 class ChartCreation():
 
@@ -17,6 +21,7 @@ class ChartCreation():
         self.curIP = None
         self.labels_list = lbls_lst
         self.x_axisLabels = []
+
 
     # Получение меток и "шага" для оси абсцисс
     def get_x_labels(self):
