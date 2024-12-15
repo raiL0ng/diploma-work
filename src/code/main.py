@@ -1,12 +1,13 @@
-from variable_definition import Packet_list, Object_list, Labels_list, Session_list
-from common_methods import read_from_file, write_to_file
+from variable_definition import Object_list
+from session_creation import Session_list
+from common_methods import read_from_file, write_to_file, Packet_list
 from sniffer import Sniffer
 from traffic_analysis import TrafficAnalysis
 
 
 # Выбор опции (меню)
 def choose_mode():
-  global Packet_list, Object_list, Labels_list, Session_list
+  global Packet_list, Object_list, Session_list
   while True:
     print('1. Перехват трафика')
     print('2. Запись данных в файл')
@@ -17,7 +18,6 @@ def choose_mode():
     if bl == '1':
       Packet_list.clear()
       Object_list.clear()
-      Labels_list.clear()
       Session_list.clear()
       Sniffer().traffic_interception()
     elif bl == '2':
@@ -25,7 +25,6 @@ def choose_mode():
     elif bl == '3':
       Packet_list.clear()
       Object_list.clear()
-      Labels_list.clear()
       Session_list.clear()
       read_from_file()
       print(f'\nДанные собраны. Перехвачено: {len(Packet_list)} пакетов(-а)\n')

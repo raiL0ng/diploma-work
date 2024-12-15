@@ -1,37 +1,34 @@
 import time
-from variable_definition import Packet_list, Object_list, Labels_list, Session_list
-from session_creation import SessionInitialization
+from common_methods import Packet_list
+from variable_definition import Object_list
+from session_creation import SessionInitialization, Session_list
 from package_parameters import ExploreObject
 from chart_creation import ChartCreation
+
 
 class TrafficAnalysis:
 
     def __init__(self) -> None:
         self.IPList = None
         self.numPacketsPerSec = None
-        # self.strt_time = None
-        # self.fin_time = None
-        # self.avgNumPacket = None
-        # self.avgSizePacket = None
-
+        self.labels_list = []
+        self.obj_list = []
 
     # Получение общей информации о текущей
     # попытке перехвата трафика
     def get_common_data(self):
-        global Labels_list
-        Labels_list.clear()
         self.IPList = set()
         self.numPacketsPerSec = []
         curTime = Packet_list[0].timePacket + 1
         fin = Packet_list[-1].timePacket + 1
-        Labels_list.append(time.strftime('%H:%M:%S', time.localtime(Packet_list[0].timePacket)))
+        self.labels_list.append(time.strftime('%H:%M:%S', time.localtime(Packet_list[0].timePacket)))
         cntPacket = 0
         i = 0
         while curTime < fin:
             for k in range(i, len(Packet_list)):
                 if Packet_list[k].timePacket > curTime:
                     self.numPacketsPerSec.append(cntPacket)
-                    Labels_list.append(time.strftime('%H:%M:%S', time.localtime(curTime)))
+                    self.labels_list.append(time.strftime('%H:%M:%S', time.localtime(curTime)))
                     cntPacket = 0
                     i = k
                     break
@@ -75,23 +72,13 @@ class TrafficAnalysis:
         print('')
 
 
+    # Обработка общих данных
     def start_to_analyse(self):
         if Packet_list == []:
             print('\nНет данных! Сначала необходимо получить данные!\n')
             return
         self.get_common_data()
-        # si = SessionInitialization()
-        # print(f'Sessions len = {len(Session_list)}:')
-        # for el in Session_list:
-        #     print(f"({el.initiator}, {el.target})", end=' ')
-        # si.clear_unwanted_sessions()
-        # print(f'after clean Sessions len = {len(Session_list)}:')
-        # for el in Session_list:
-        #     print(f"({el.initiator}, {el.target})", end=' ')
-        # for s in Session_list:
-        #     s.fin_rdp_check()
-        # si.print_inf_about_sessions()
-        si = SessionInitialization()
+        si = SessionInitialization(False, False)
         print(f'Sessions len = {len(Session_list)}:')
         si.clear_unwanted_sessions()
         print(f'After Sessions len = {len(Session_list)}:')
@@ -150,7 +137,7 @@ class TrafficAnalysis:
                     if 0 <= k1 and k1 <= t:
                         if k1 != 0:
                             port = Object_list[k].commonPorts[k1 - 1]
-                        ChartCreation(k, strt, fin, port).start_to_plot()
+                        ChartCreation(k, strt, fin, port, self.labels_list).start_to_plot()
                     else:
                         print(f'Введите число в пределах 0 - {t - 1}')
             else:

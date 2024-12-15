@@ -41,7 +41,16 @@ class ModelInit:
                 for el in row:
                     f.write(f'{el},')
                 f.write('!\n')
-    
+
+
+    # Метод для выполнения автоматической разметки данных
+    def is_rdp_check(self, row):
+        ports = ['3389', '4899', '53389', '5931']
+        for p in ports:
+            if '(' + p in row or p + ')' in row:
+                return True
+        return False
+
 
     # Считывание входных векторов с файла
     def read_data_from_file(self, filename='x_input.log'):
@@ -60,7 +69,7 @@ class ModelInit:
                     cur_xs.clear()
                     cur_ys.clear()
                 elif ':' in row:
-                    if '(3389' in row or '3389)' in row:
+                    if self.is_rdp_check(row):
                     # if '(3389' in row or '3389)' in row or '(4899' in row or '4899)' in row:
                         cur_ys.append([1, 0])
                     else:
@@ -73,6 +82,7 @@ class ModelInit:
                 self.y_input.append(np.array(cur_ys))
 
 
+    # Сохранение входных векторов в файл
     def save_vectors(self, filename='vectors.log'):
         n = len(self.x_input)
         num = 1
@@ -86,6 +96,7 @@ class ModelInit:
                     num += 1
 
 
+    # Загрузка входных векторов
     def load_selected_vectors(self, nums, filename='vectors.log'):
         cur_x = []
         cur_y = []
@@ -105,6 +116,8 @@ class ModelInit:
         
         return cur_x, cur_y
     
+
+    # Построение графиков
     def plot_smth(self, history):
         # Построение графика потерь (loss) на обучении и валидации
         plt.plot(history.history['loss'], label='Training Loss')
@@ -159,6 +172,7 @@ class ModelInit:
         self.plot_smth(history)
 
 
+    # Выполнение предсказаний
     def get_prediction(self, vec):
         prediction = self.model.predict(vec)
         print("Предсказание:", prediction)
@@ -169,20 +183,23 @@ class ModelInit:
                 print('Данная сессия не является RDP')
 
 
+    # Обработка оценок качества
     def get_confusions(self, ys, pred):
         for i in range(pred.shape[1]):
-            if pred[0, i, 0] > 0.5 and pred[0, i, 1] < 0.5:
+            if pred[0, i, 0] > 0.2 and pred[0, i, 1] < 0.8:
                 if ys[i][0] == 1 and ys[i][1] == 0:
                     self.confusions['TP'] += 1
                 else:
-                    self.confusions['FP'] += 1 
+                    self.confusions['FN'] += 1 
             else:
                 if ys[i][0] == 1 and ys[i][1] == 0:
-                    self.confusions['FN'] += 1
+                    self.confusions['FP'] += 1
+                    print(pred[0, i], ys[i])
                 else:
                     self.confusions['TN'] += 1
 
 
+    # Получение оценок качества
     def get_quality_eval(self):
         print(f'Матрица ошибок (confusion matrix):\nTP : {self.confusions['TP']}' +
               f' FP : {self.confusions['FP']}\nTN : {self.confusions['TN']}' +
@@ -200,7 +217,8 @@ class ModelInit:
               f'Полнота (recall): {recall}\n'
               f'F1-Score: {f1_score}') 
     
-                
+    
+    # Получение предсказаний по всем полученным входным векторам
     def get_all_predictions(self, buf=15):
         xdata = []
         ydata = []
@@ -219,7 +237,7 @@ class ModelInit:
         print(f'\nБыло обработано {len(xdata)} векторов')
         
 
-
+    # Сохранение модели в файл
     def save_model(self, filename='model.keras'):
         os.makedirs('../model_directory', exist_ok=True)
         file_path = os.path.join('../model_directory', filename)
@@ -227,6 +245,7 @@ class ModelInit:
         print(f"\nМодель успешно сохранена в {file_path}")
 
 
+    # Загрузка модели
     def load_LSTM_model(self, filename='model.keras'):
         try:
             self.model = load_model(f'../model_directory/{filename}')
@@ -238,6 +257,7 @@ class ModelInit:
             return True
 
 
+# Выполнение основной логики
 def main():
     while True:
         print('\n1. Обучение модели'

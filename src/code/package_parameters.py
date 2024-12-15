@@ -44,6 +44,8 @@ class ExploreObject:
     self.in_out_rel_data = None
     self.ack_flags_diff_data = None
     self.udp_tcp_rel_data = None
+    self.avg_time_intervals = None
+    self.dev_time_intervals = None
     self.syn_flags_freq_data = None
     self.fin_flags_freq_data = None
     self.psh_flags_freq_data = None

@@ -1,10 +1,11 @@
 import time
 import numpy as np
-from variable_definition import Session_list, line
 from colorama import init, Back, Fore
 from math import sqrt
 from keras.models import load_model
 
+# Глобальный список сессий
+Session_list = []
 
 init(autoreset=True)
 
@@ -23,12 +24,11 @@ class Session:
         self.lastTimePkt = None
         self.totalTime = None
         self.intervalsList = []
-
+        # Для подсчета количества/размера пакетов
         self.cntPktSrcIP1 = 0
         self.cntPktDestIP1 = 0
         self.pktSizeDestIP1 = []
         self.pktSizeDestIP2 = []
-        
         # Для подсчета флагов PSH        
         self.cntPSHDestIP1 = 0
         self.cntPSHDestIP2 = 0
@@ -55,6 +55,7 @@ class Session:
         self.CNT = 0
 
 
+    # Сбор данных о сессии, извлекаемых из пакетов
     def update_data(self, pkt):
         # Вычисление временных интервалов
         if self.prevTimePkt is None:
@@ -108,6 +109,8 @@ class Session:
         self.cntPkt += 1
         self.CNT += 1
 
+
+    # Обнуление накопленных данных после предсказания
     def clean_all_parameters(self):
         self.prevTimePkt = None
         self.intervalsList.clear()
@@ -134,51 +137,21 @@ class Session:
         self.cntPkt = 0
 
 
-    def ratio_calc(self, num, denom):
-        if denom == 0:
-            return 0
-        return num / denom
-
-
-    def test_print_parameters(self):
-        print(f"intervalsList = {self.intervalsList}\n"
-              f"cntPktSrcIP1 = {self.cntPktSrcIP1}\n"
-              f"cntPktDestIP1 = {self.cntPktDestIP1}\n"
-              f"self.pktSizeDestIP1 = {self.pktSizeDestIP1}\n"
-              f"self.pktSizeDestIP2 = {self.pktSizeDestIP2}\n"
-              f"self.cntPSHDestIP1 = {self.cntPSHDestIP1}\n"
-              f"self.cntPSHDestIP2 = {self.cntPSHDestIP2}\n"
-              f"self.cntACKDestIP1 = {self.cntACKDestIP1}\n"
-              f"self.cntACKDestIP2 = {self.cntACKDestIP2}\n"
-              f"self.cntACKSrcIP1 = {self.cntACKSrcIP1}\n"
-              f"self.cntPktTCPDestIP1 = {self.cntPktTCPDestIP1}\n"
-              f"self.cntPktTCPDestIP2 = {self.cntPktTCPDestIP2}\n"
-              f"self.cntSYNSrc = {self.cntSYNSrc}\n"
-              f"self.cntSYNDest = {self.cntSYNDest}\n"
-              f"self.cntFINSrc = {self.cntFINSrc}\n"
-              f"self.cntFINDest = {self.cntFINDest}\n"
-              f"self.cntRSTSrc = {self.cntRSTSrc}\n"
-              f"self.cntRSTDest = {self.cntRSTDest}\n"
-              f"self.winSizeList = {self.winSizeList}\n"
-              f"self.cntPktUDP = {self.cntPktUDP}\n"
-              f"self.cntPktUDP = {self.cntPktUDP}\n"
-              f"self.cntPkt = {self.cntPkt}")
-
-
+    # Получение входного вектора x_t
     def get_result(self):
+        
+        def ratio_calc(num, denom):
+            if denom == 0:
+                return 0
+            return num / denom
+
         result = []
         if not self.stateActive:
             return None
         l = len(self.intervalsList)
         self.totalTime = round(self.lastTimePkt - self.strt_time, 2)
-        # print(f"intervals = {l} pktSizeDstIP1 = {len(self.pktSizeDestIP1)} pktSizeDstIP2 = {len(self.pktSizeDestIP2)} winsize = {len(self.winSizeList)} cntPkt = {self.cntPkt} CNT = {self.CNT}")
         if self.stateActive and self.cntPkt < 2:
             self.stateActive = False
-            # print( f'Время last:'
-            #      , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.lastTimePkt)) )
-            # print( f'Время strt:'
-            #      , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(self.strt_time)) )
-            # print( f'Время total: {self.totalTime}' )
             return None
         # Вычисление средней задержки
         sum = 0
@@ -205,10 +178,10 @@ class Session:
         else:
             result.append(tmp[l // 2])
         # Вычисление отношения объема входящего на исходящий трафик для IP1 и IP2
-        result.append(self.ratio_calc(self.cntPktDestIP1, self.cntPktSrcIP1))
-        result.append(self.ratio_calc(self.cntPktSrcIP1, self.cntPktDestIP1))
+        result.append(ratio_calc(self.cntPktDestIP1, self.cntPktSrcIP1))
+        result.append(ratio_calc(self.cntPktSrcIP1, self.cntPktDestIP1))
         # Вычисление отношения объема UDP-трафика и TCP-трафика
-        result.append(self.ratio_calc(self.cntPktUDP, self.cntPkt - self.cntPktUDP))
+        result.append(ratio_calc(self.cntPktUDP, self.cntPkt - self.cntPktUDP))
         # Вычисление среднего значения объема пакетов получаемого IP1
         l = len(self.pktSizeDestIP1)
         sum = 0
@@ -228,19 +201,19 @@ class Session:
         else:
             result.append(0)
         # Вычисление частоты флагов PSH для IP1 и IP2
-        result.append(self.ratio_calc(self.cntPSHDestIP1, self.cntPktTCPDestIP1))
-        result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntPktTCPDestIP2))
+        result.append(ratio_calc(self.cntPSHDestIP1, self.cntPktTCPDestIP1))
+        result.append(ratio_calc(self.cntPSHDestIP2, self.cntPktTCPDestIP2))
         # Вычисление частоты флагов ACK для IP1 и IP2
-        result.append(self.ratio_calc(self.cntACKDestIP1, self.cntPktTCPDestIP1))
-        result.append(self.ratio_calc(self.cntACKDestIP2, self.cntPktTCPDestIP2))
+        result.append(ratio_calc(self.cntACKDestIP1, self.cntPktTCPDestIP1))
+        result.append(ratio_calc(self.cntACKDestIP2, self.cntPktTCPDestIP2))
         # Вычисление отношения ACK/PSH для IP1 и IP2
-        result.append(self.ratio_calc(self.cntPSHDestIP1, self.cntACKDestIP1))
-        result.append(self.ratio_calc(self.cntPSHDestIP2, self.cntACKDestIP2))
+        result.append(ratio_calc(self.cntPSHDestIP1, self.cntACKDestIP1))
+        result.append(ratio_calc(self.cntPSHDestIP2, self.cntACKDestIP2))
         # Вычисление разности числа исходящих и входящих ACK-флагов IP1
         result.append(abs(self.cntACKDestIP1 - self.cntACKSrcIP1))
         # Вычисление отношения количества флагов SYN, FIN, RST
-        result.append(self.ratio_calc(self.cntSYNSrc + 1, self.cntFINSrc + self.cntRSTSrc + 1))
-        result.append(self.ratio_calc(self.cntSYNDest + 1, self.cntFINDest + self.cntRSTDest + 1))
+        result.append(ratio_calc(self.cntSYNSrc + 1, self.cntFINSrc + self.cntRSTSrc + 1))
+        result.append(ratio_calc(self.cntSYNDest + 1, self.cntFINDest + self.cntRSTDest + 1))
         # Вычисление среднего размера экрана
         l = len(self.winSizeList)
         if l != 0:
@@ -259,18 +232,17 @@ class Session:
         else:
             result.extend([0, 0])
         result.append(self.cntPkt)
-        # self.test_print_parametrers()
-        # print(f'result = {result}\n')
         self.clean_all_parameters()
         return result
 
 
+    # Оценка результата предсказания
     def rdp_prob_check(self, val0, val1):
         if val0 > 0.5 and val1 < 0.5:
-            self.rdpProb.append(True)
+            self.rdpProb.append((True, [val0, val1]))
             self.cntTr += 1
         else:
-            self.rdpProb.append(False)
+            self.rdpProb.append((False, [val0, val1]))
         l = len(self.rdpProb)
         if not self.isRDP and l >= 2:
             self.isRDP = self.cntTr > l - self.cntTr
@@ -281,7 +253,6 @@ class SessionInitialization:
 
 
     def __init__(self, fl_find_rdp=False, fl_train=True) -> None:
-        # self.strtTime = strt
         self.cur_ports = set()
         self.curTime = None
         self.model = None
@@ -289,8 +260,9 @@ class SessionInitialization:
         self.findRDP = fl_find_rdp
         self.x_input = []
         self.cntPeriods = 0
+        self.line = '-------------------------'
 
-
+    # Инициализация времени
     def add_start_time(self, strt):
         self.curTime = strt + 15
 
@@ -319,6 +291,7 @@ class SessionInitialization:
             return True
 
     
+    # Выполнение предсказания по каждой активной сессии
     def get_prediction(self, indexes):
         pred = self.model.predict(self.x_input)
         j = 0
@@ -327,11 +300,7 @@ class SessionInitialization:
             j += 1
 
 
-    def print_all_predictions(self):
-        for s in Session_list:
-            print(f"All-predictions: {s.ips}::{s.ports}\narr = {s.rdpProb}")
-
-
+    # Обработка режимов работы с моделью
     def packet_preparation(self):
         self.x_input = []
         self.cntPeriods += 1
@@ -346,9 +315,8 @@ class SessionInitialization:
                     self.x_input.append(vec)
             self.x_input = np.array(self.x_input)
             self.x_input = np.expand_dims(self.x_input, axis=0)
-            if len(self.x_input.shape) != 3:
-                print(self.x_input)
-                return
+            # if len(self.x_input.shape) != 3:
+            #     return
             self.get_prediction(ids)
         # Режим обучения
         elif self.train_mode:
@@ -356,13 +324,13 @@ class SessionInitialization:
                 vec = s.get_result()
                 if vec is not None:
                     self.x_input.append(((s.ips, s.ports), vec))
-                # print(f"ips = {s.ips} ports = {s.ports} vector = {vec}")
             self.write_data_to_file()
         else:
             for s in Session_list:
                 vec = s.get_result()
 
 
+    # Классификация пакетов по сессиям
     def find_session_location(self, pkt) -> bool:
         global Session_list
         isNewSession = True
@@ -403,7 +371,7 @@ class SessionInitialization:
     def print_packet_information(self, pkt, pred_res):
         if self.findRDP and not pred_res:
             return
-        print( f'{line}Пакет No{pkt.numPacket}{line}\n'
+        print( f'{self.line}Пакет No{pkt.numPacket}{self.line}\n'
              , 'Время перехвата: '
              , time.strftime( '%m:%d:%Y %H:%M:%S'
                             , time.localtime(pkt.timePacket) ) + '\n'
@@ -411,14 +379,13 @@ class SessionInitialization:
              , f'MAC-адрес отправителя: {pkt.mac_src}\n'
              , f'MAC-адрес получателя: {pkt.mac_dest}\n'
              , f'Отправитель: {pkt.ip_src}:{pkt.port_src}\n'
-             , f'Получатель: {pkt.ip_dest}:{pkt.port_dest}')
+             , f'Получатель: {pkt.ip_dest}:{pkt.port_dest}' )
         if pkt.protoType == 'TCP':
             print( f' Порядковый номер: {pkt.seq}; Номер подтверждения: {pkt.ack}\n' +
-                f' SYN:{pkt.fl_syn}; ACK:{pkt.fl_ack}; PSH:{pkt.fl_psh}; ' +
-                f'RST:{pkt.fl_rst}; FIN:{pkt.fl_fin}\n')
+                   f' SYN:{pkt.fl_syn}; ACK:{pkt.fl_ack}; PSH:{pkt.fl_psh}; ' +
+                   f'RST:{pkt.fl_rst}; FIN:{pkt.fl_fin}\n')
         if self.findRDP and pred_res:
-            print(f'{line} Обнаружена RDP-сессия! {line}')
-        # print(f'\nВероятность RDP-сессии {mes_prob[1]}%')
+            print(f'{self.line} Обнаружена RDP-сессия! {self.line}')
 
 
     # Обработка значений списка Session_list
@@ -455,4 +422,4 @@ class SessionInitialization:
             if s.isRDP:
                 print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия!!!')
             cnt += 1
-        print(f'{line}{line}\n')
+        print(f'{self.line}{self.line}\n')

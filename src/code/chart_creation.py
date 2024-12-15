@@ -2,18 +2,20 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from colorama import Back, Fore
-from variable_definition import Packet_list, Object_list, Labels_list
-
+from variable_definition import Object_list
+from common_methods import Packet_list
+from math import sqrt
 
 class ChartCreation():
 
-    def __init__(self, k, strt, fin, port) -> None:
+    def __init__(self, k, strt, fin, port, lbls_lst) -> None:
         self.k = k
         self.strt_time = strt
         self.fin_time = fin
         self.curPort = port
         self.step = None
         self.curIP = None
+        self.labels_list = lbls_lst
         self.x_axisLabels = []
 
     # Получение меток и "шага" для оси абсцисс
@@ -27,8 +29,8 @@ class ChartCreation():
         elif total_time > 50:
             self.step = 5
         self.x_axisLabels.clear()
-        for i in range(0, len(Labels_list), self.step):
-            self.x_axisLabels.append(Labels_list[i])
+        for i in range(0, len(self.labels_list), self.step):
+            self.x_axisLabels.append(self.labels_list[i])
 
 
     # Получение общей информации о трафике,
@@ -393,6 +395,8 @@ class ChartCreation():
         pos = 0
         while curTime < finTime:
             for k in range(pos, len(Packet_list)):
+                if Packet_list[k].protoType == "UDP":
+                    continue
                 if Packet_list[k].timePacket > curTime:
                     if cntDest != 0:
                         avgWindowSizeDest.append(sumDest / cntDest)
@@ -408,7 +412,7 @@ class ChartCreation():
                         cntDest += 1
                 else:
                     if Packet_list[k].port_src == self.curPort or Packet_list[k].port_dest == self.curPort:
-                        if Packet_list[k].ip_dest == exploreIP:
+                        if Packet_list[k].ip_src == exploreIP or Packet_list[k].ip_dest == exploreIP:
                             sumDest += Packet_list[k].win_size
                             cntDest += 1
             curTime += 1
@@ -417,7 +421,7 @@ class ChartCreation():
         else:
             avgWindowSizeDest.append(0)
         return avgWindowSizeDest
-    
+
 
     # Выбор опций для выбранного IP-адреса
     def start_to_plot(self):
@@ -475,8 +479,8 @@ class ChartCreation():
                 fig = plt.figure(figsize=(16, 6), constrained_layout=True)
                 f = fig.add_subplot()
                 f.grid()
-                f.set_title('Отношение объема входящего к объему исходящего трафиков' + \
-                            r' ($r_{in/out} = \frac{V_{in}}{V_{out}}$)', fontsize=15 )
+                f.set_title( 'Отношение объема входящего к объему исходящего трафиков' + \
+                             f' (общий порт {self.curPort})', fontsize=15 )
                 f.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 f.set_ylabel(r'$r_{in/out} = \frac{V_{in}}{V_{out}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].in_out_rel_data, label=self.curIP)
@@ -498,9 +502,8 @@ class ChartCreation():
                 fig = plt.figure(figsize=(16, 6), constrained_layout=True)
                 f = fig.add_subplot()
                 f.grid()
-                f.set_title( 'Отношение объема входящего UDP-трафика к объему ' +  
-                             'входящего TCP-трафика' + r' ($r_{in} = \frac{V_{udp}}{V_{tcp}}$)'
-                           , fontsize=15 )
+                f.set_title( 'Отношение объема входящего UDP-трафика к объему ' + 
+                             f'входящего TCP-трафика (общий порт {self.curPort})', fontsize=15 )
                 f.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 f.set_ylabel(r'$r_{in} = \frac{V_{udp}}{V_{tcp}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].udp_tcp_rel_data, label=self.curIP)
@@ -522,8 +525,8 @@ class ChartCreation():
                 fig = plt.figure(figsize=(16, 6), constrained_layout=True)
                 f = fig.add_subplot()
                 f.grid()
-                f.set_title('Разность числа исходящих и числа входящих ACK-флагов' + \
-                            r' ($r_{ack} = V_{A_{out}} - V_{A_{in}}$)', fontsize=15)
+                f.set_title( 'Разность числа исходящих и числа входящих ACK-флагов' + \
+                            f' (общий порт {self.curPort})', fontsize=15 )
                 f.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 f.set_ylabel(r'$r_{ack} = V_{A_{out}} - V_{A_{in}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].ack_flags_diff_data, label=self.curIP)
@@ -553,7 +556,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Частота флагов ACK' + \
-                                r' ($r_{ack} = \frac{V_{A_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_1.set_ylabel(r'$r_{ack} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].ack_flags_freq_data, 'b', label=self.curIP)
@@ -565,7 +568,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].psh_flags_freq_data, 'orange', label=self.curIP)
                 fig_2.set_title('Частота флагов PSH' + \
-                                r' ($r_{psh} = \frac{V_{P_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_2.set_ylabel(r'$r_{psh} = \frac{V_{P_{in}}}{V_{tcp}}$', fontsize=15)
                 if scndIP != 'None':
@@ -596,7 +599,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Количество входящих пакетов, полученных за ' + \
-                                'единицу времени', fontsize=15)
+                                f'единицу времени (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 plt.plot(x, Object_list[self.k].pkt_amnt_dst_data, 'b', label=self.curIP)
                 if scndIP != 'None':
@@ -607,7 +610,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].pkt_amnt_src_data, 'orange', label=self.curIP)
                 fig_2.set_title('Количество исходящих пакетов, полученных за ' + \
-                                'единицу времени', fontsize=15)
+                                f'единицу времени (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 if scndIP != 'None':
                     plt.plot(x, Object_list[pos].pkt_amnt_src_data, 'g', label=scndIP)
@@ -637,7 +640,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Максимальный размер входящих пакетов, полученных за ' + \
-                      'единицу времени', fontsize=15)
+                                f'единицу времени (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 plt.plot(x, Object_list[self.k].pkt_size_data_dst, 'b', label=self.curIP)
                 if scndIP != 'None':
@@ -648,7 +651,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].pkt_size_data_src, 'orange', label=self.curIP)
                 fig_2.set_title('Максимальный размер исходящих пакетов, полученных за ' + \
-                                'единицу времени', fontsize=15)
+                                f'единицу времени (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 if scndIP != 'None':
                     plt.plot(x, Object_list[pos].pkt_size_data_src, 'g', label=scndIP)
@@ -676,7 +679,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Частота флагов SYN' + \
-                                r' ($r_{syn} = \frac{V_{S_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_1.set_ylabel(r'$r_{syn} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].syn_flags_freq_data, 'b', label=self.curIP)
@@ -688,7 +691,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].fin_flags_freq_data, 'orange', label=self.curIP)
                 fig_2.set_title('Частота флагов FIN' + \
-                                r' ($r_{fin} = \frac{V_{F_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_2.set_ylabel(r'$r_{fin} = \frac{V_{F_{in}}}{V_{tcp}}$', fontsize=15)
                 if scndIP != 'None':
@@ -717,7 +720,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Частота флагов PSH' + \
-                                r' ($r_{PSH} = \frac{V_{P_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_1.set_ylabel(r'$r_{psh} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].psh_flags_freq_data, 'b', label=self.curIP)
@@ -729,7 +732,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].psh_flags_freq_data_src, 'orange', label=self.curIP)
                 fig_2.set_title('Частота флагов PSH' + \
-                                r' ($r_{psh} = \frac{V_{P_{out}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_2.set_ylabel(r'$r_{psh} = \frac{V_{P_{out}}}{V_{tcp}}$', fontsize=15)
                 if scndIP != 'None':
@@ -758,7 +761,7 @@ class ChartCreation():
                 fig_1 = fig.add_subplot(gs[0, 0])
                 fig_1.grid()
                 fig_1.set_title('Частота флагов ack' + \
-                                r' ($r_{ACK} = \frac{V_{P_{in}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_1.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_1.set_ylabel(r'$r_{ack} = \frac{V_{S_{in}}}{V_{tcp}}$', fontsize=15)
                 plt.plot(x, Object_list[self.k].ack_flags_freq_data, 'b', label=self.curIP)
@@ -770,7 +773,7 @@ class ChartCreation():
                 fig_2.grid()
                 plt.plot(x, Object_list[self.k].ack_flags_freq_data_src, 'orange', label=self.curIP)
                 fig_2.set_title('Частота флагов ack' + \
-                                r' ($r_{ACK} = \frac{V_{P_{out}}}{V_{tcp}}$)', fontsize=15)
+                                f' (общий порт {self.curPort})', fontsize=15 )
                 fig_2.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 fig_2.set_ylabel(r'$r_{ack} = \frac{V_{P_{out}}}{V_{tcp}}$', fontsize=15)
                 if scndIP != 'None':
@@ -794,7 +797,8 @@ class ChartCreation():
                 f = fig.add_subplot()
                 f.grid()
                 f.set_title( 'Среднее количество размера окна, полученных за ' + \
-                             'единицу времени', fontsize=15 )
+                             f'единицу времени (общий порт {self.curPort})', fontsize=15 )
+
                 f.set_xlabel('Общее время перехвата трафика', fontsize=15)
                 plt.plot(x, Object_list[self.k].avg_winsize_dest, label=self.curIP + '(получатель)')
                 if scndIP != 'None':

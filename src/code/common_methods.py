@@ -1,10 +1,16 @@
 from session_creation import SessionInitialization
-from variable_definition import Packet_list
+# from variable_definition import Packet_list
 from package_parameters import PacketInf
+
+# Список перехваченных пакетов
+Packet_list = []
 
 
 # Запись информации о пакетах в файл
 def write_to_file():
+    if Packet_list == []:
+        print('Нет данных для записи в файл!')
+        return
     print('Введите название файла (например: data.log)')
     FileName = input()
     try:
@@ -58,30 +64,29 @@ def get_new_session(pkt, iplist):
             return False
     return True
 
-#TODO вернуть try except
+
 # Считывание с файла и заполнение массива
 # Packet_list объектами класса PacketInf
 def read_from_file():
-    # global Packet_list
     print('Введите название файла (например: data.log)')
     FileName = input()
     if Packet_list:
         return
-    # try:
-    si = SessionInitialization(False)
-    iplist = set()
-    with open(FileName, 'r') as f:
-        while True:
-            inf = f.readline()
-            if not inf:
-                break
-            row_processing(inf)
-            if get_new_session(Packet_list[-1], iplist):
-                iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
-            if si.curTime is None:
-                si.add_start_time(Packet_list[-1].timePacket) 
-            si.find_session_location(Packet_list[-1])
-    si.packet_preparation()
-    # print(f"IPS = {iplist} len = {len(iplist)}")
-    # except:
-    #     print(f'\nОшибка считывания файла {FileName}!\n')
+    try:
+        si = SessionInitialization(True, False)
+        si.load_LSTM_model()
+        iplist = set()
+        with open(FileName, 'r') as f:
+            while True:
+                inf = f.readline()
+                if not inf:
+                    break
+                row_processing(inf)
+                if get_new_session(Packet_list[-1], iplist):
+                    iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
+                if si.curTime is None:
+                    si.add_start_time(Packet_list[-1].timePacket) 
+                si.find_session_location(Packet_list[-1])
+        si.packet_preparation()
+    except:
+        print(f'\nОшибка считывания файла {FileName} или загрузки модели model.keras!\n')

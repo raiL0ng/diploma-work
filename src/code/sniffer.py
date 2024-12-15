@@ -2,8 +2,8 @@ import socket, struct, keyboard, os
 import threading
 import queue
 from time import time
-from variable_definition import Packet_list, line, Phrases_signs
-from common_methods import write_to_file
+# from variable_definition import Packet_list
+from common_methods import write_to_file, Packet_list
 from package_parameters import PacketInf
 from session_creation import SessionInitialization
 
@@ -104,9 +104,6 @@ class Sniffer:
             pinf[4], pinf[3], protocol = self.get_ethernet_frame(raw_data)
             if protocol == 8:
                 _, proto, pinf[6], pinf[7], data_ipv4 = self.get_ipv4_data(raw_data[14:])
-                # if NumPacket > curcnt:
-                #     curcnt += 1000
-                #     si.clear_unwanted_sessions()
 
                 if proto == 17:  # UDP
                     NumPacket += 1
@@ -135,9 +132,9 @@ class Sniffer:
                 self.packet_queue.put(None)
                 processing_thread.join()
                 si.packet_preparation()
-                # si.print_all_predictions()
                 print('\nЗавершение программы...\n')
                 break
+
 
     # Определение параметров перехвата трафика
     def traffic_interception(self):
