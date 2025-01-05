@@ -45,7 +45,7 @@ class ModelInit:
 
     # Метод для выполнения автоматической разметки данных
     def is_rdp_check(self, row):
-        ports = ['3389', '4899', '53389', '5931']
+        ports = ['3389']
         for p in ports:
             if '(' + p in row or p + ')' in row:
                 return True
@@ -155,15 +155,14 @@ class ModelInit:
         )
         # Создаем раннюю остановку с оптимальными параметрами
         early_stopping = EarlyStopping(
-            monitor='val_loss',      # Следим за потерями на валидации
-            patience=5,              # Ожидаем до 5 эпох без улучшений
-            restore_best_weights=True, # Восстанавливаем лучшие веса модели
-            min_delta=0.001           # Минимальное значимое улучшение
+            monitor='val_loss',
+            patience=5,
+            restore_best_weights=True,
+            min_delta=0.001
         )
         # Проверка формата и формы массива
         print("Форма x_padded:", x_padded.shape)
         print("Форма y_padded:", y_padded.shape)
-        # print(x_padded, y_padded)
 
         history = self.model.fit(x_padded, y_padded, epochs=epochs
                                  , batch_size=batch_size, verbose=1

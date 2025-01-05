@@ -6,7 +6,6 @@ from common_methods import write_to_file, Packet_list
 from package_parameters import PacketInf
 from session_creation import SessionInitialization
 
-
 class Sniffer:
 
     def __init__(self) -> None:
@@ -20,14 +19,12 @@ class Sniffer:
         dest_mac, src_mac, proto = struct.unpack('!6s6sH', data[:14])
         return self.get_mac_addr(dest_mac), self.get_mac_addr(src_mac), socket.htons(proto)
 
-
     # Получение MAC-адреса
     def get_mac_addr(self, mac_bytes):
         mac_str = ''
         for el in mac_bytes:
             mac_str += format(el, '02x').upper() + ':'
         return mac_str[:len(mac_str) - 1]
-
 
     # Получение IPv4-заголовка
     def get_ipv4_data(self, data):
@@ -36,7 +33,6 @@ class Sniffer:
         ttl, proto, src, dest = struct.unpack('!8xBB2x4s4s', data[:20])
         return ttl, proto, self.ipv4_dec(src), self.ipv4_dec(dest), data[header_length:]
 
-
     # Получение IP-адреса формата X.X.X.X
     def ipv4_dec(self, ip_bytes):
         ip_str = ''
@@ -44,12 +40,10 @@ class Sniffer:
             ip_str += str(el) + '.'
         return ip_str[:-1]
 
-
     # Получение UDP-сегмента данных
     def get_udp_segment(self, data):
         src_port, dest_port, size = struct.unpack('!HH2xH', data[:8])
         return str(src_port), str(dest_port), size, data[8:]
-
 
     # Получение TCP-cегмента данных
     def get_tcp_segment(self, data):
@@ -59,13 +53,11 @@ class Sniffer:
         return str(src_port), str(dest_port), str(sequence), \
                str(ack), offset_flags, win_size, data[offset:]
 
-
     # Форматирование данных для корректного представления
     def format_data(self, data):
         if isinstance(data, bytes):
             data = ''.join(r'\x{:02x}'.format(el) for el in data)
         return data
-
 
     # Перехват трафика и вывод информации в консоль
     def start_to_listen(self):
@@ -133,7 +125,6 @@ class Sniffer:
                 si.packet_preparation()
                 print('\nЗавершение программы...\n')
                 break
-
 
     # Определение параметров перехвата трафика
     def traffic_interception(self):

@@ -4,88 +4,73 @@ from package_parameters import PacketInf
 # Список перехваченных пакетов
 Packet_list = []
 
-
 # Запись информации о пакетах в файл
 def write_to_file():
-    if Packet_list == []:
+    if not Packet_list:
         print('Нет данных для записи в файл!')
         return
-    print('Введите название файла (например: data.log)')
-    FileName = input()
+    
     try:
-        f = open(FileName, 'w')
-    except:
-        print('\nНекорректное название файла!\n')
-    else:
-        if Packet_list == []:
-            return
-        try:
+        FileName = input('Введите название файла (например: data.log): ')
+        with open(FileName, 'w') as f:
             for obj in Packet_list:
-                if obj.protoType == 'UDP':
-                    f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
-                             f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
-                             f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
-                             f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};!\n' )
+                base_info = (
+                    f"No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};"
+                    f"MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};"
+                    f"IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};"
+                    f"Port-dest:{obj.port_dest};Len-data:{obj.len_data};"
+                )
+                if obj.protoType == 'TCP':
+                    tcp_info = (
+                        f"Seq:{obj.seq};Ack:{obj.ack};Fl-ack:{obj.fl_ack};"
+                        f"Fl-psh:{obj.fl_psh};Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};"
+                        f"Fl-fin:{obj.fl_fin};Win-size:{obj.win_size};"
+                    )
+                    f.write(base_info + tcp_info + "!\n")
                 else:
-                    f.write( f'No:{obj.numPacket};Time:{obj.timePacket};Pac-size:{obj.packetSize};' +
-                             f'MAC-src:{obj.mac_src};MAC-dest:{obj.mac_dest};Type:{obj.protoType};' + 
-                             f'IP-src:{obj.ip_src};IP-dest:{obj.ip_dest};Port-src:{obj.port_src};' + 
-                             f'Port-dest:{obj.port_dest};Len-data:{obj.len_data};Seq:{obj.seq};' +
-                             f'Ack:{obj.ack};Fl-ack:{obj.fl_ack};Fl-psh:{obj.fl_psh};' +
-                             f'Fl-rst:{obj.fl_rst};Fl-syn:{obj.fl_syn};Fl-fin:{obj.fl_fin};Win-size:{obj.win_size};!\n' )
-            print(f'\nВ файл {FileName} была успешна записана информация.\n')
-            f.close()
-        except:
-            print(f'\nОшибка записи в файл {FileName}! Возможно нет данных для записи\n')
-            f.close()
-
+                    f.write(base_info + "!\n")
+            print(f'\nИнформация успешно записана в файл {FileName}.\n')
+    except Exception as e:
+        print(f'\nОшибка записи в файл {FileName}: {e}\n')
 
 # Обработка строки с данными
 def row_processing(inf):
     global Packet_list
-    data = []
-    while True:
-        beg = inf.find(':')
-        end = inf.find(';')
-        if beg == -1 and end == -1:
-            break
-        else:
-            data.append(inf[beg + 1: end])
-        inf = inf[end + 1:]
-    Packet_list.append(PacketInf(data))
+    data = [field.split(':', 1)[1] for field in inf.split(';') if ':' in field]
+    if data:
+        Packet_list.append(PacketInf(data))
 
+# Проверка, является ли сессия новой
+def is_new_session(pkt, iplist):
+    return (pkt.ip_src, pkt.ip_dest) not in iplist and (pkt.ip_dest, pkt.ip_src) not in iplist
 
-def get_new_session(pkt, iplist):
-    if len(iplist) == 0:
-        return True
-    for el in iplist:
-        if el == (pkt.ip_src, pkt.ip_dest) or (pkt.ip_dest, pkt.ip_src) == el:
-            return False
-    return True
-
-
-# Считывание с файла и заполнение массива
-# Packet_list объектами класса PacketInf
+# Считывание с файла и заполнение массива Packet_list
 def read_from_file():
-    print('Введите название файла (например: data.log)')
-    FileName = input()
-    if Packet_list:
-        return
     try:
-        si = SessionInitialization(True, False)
+        FileName = input('Введите название файла (например: data.log): ')
+        if Packet_list:
+            print('Список Packet_list уже содержит данные.')
+            return
+        si = SessionInitialization(False, False)
         si.load_LSTM_model()
         iplist = set()
+        
         with open(FileName, 'r') as f:
-            while True:
-                inf = f.readline()
-                if not inf:
-                    break
+            for inf in f:
+                if not inf.strip():
+                    continue
                 row_processing(inf)
-                if get_new_session(Packet_list[-1], iplist):
-                    iplist.add((Packet_list[-1].ip_src, Packet_list[-1].ip_dest))
+                packet = Packet_list[-1]
+                
+                if is_new_session(packet, iplist):
+                    iplist.add((packet.ip_src, packet.ip_dest))
+                
                 if si.curTime is None:
-                    si.add_start_time(Packet_list[-1].timePacket) 
-                si.find_session_location(Packet_list[-1])
+                    si.add_start_time(packet.timePacket)
+                
+                si.find_session_location(packet)
+        
         si.packet_preparation()
-    except:
-        print(f'\nОшибка считывания файла {FileName} или загрузки модели model.keras!\n')
+        print(f'\nДанные успешно считаны из файла {FileName}.\n')
+    except Exception as e:
+        print(f'\nОшибка обработки файла {FileName} или загрузки модели: {e}\n')

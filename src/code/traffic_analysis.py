@@ -20,7 +20,8 @@ class TrafficAnalysis:
         self.numPacketsPerSec = []
         curTime = Packet_list[0].timePacket + 1
         fin = Packet_list[-1].timePacket + 1
-        self.labels_list.append(time.strftime('%H:%M:%S', time.localtime(Packet_list[0].timePacket)))
+        self.labels_list.append(time.strftime('%H:%M:%S', 
+                                time.localtime(Packet_list[0].timePacket)))
         cntPacket = 0
         i = 0
         while curTime < fin:
@@ -37,9 +38,9 @@ class TrafficAnalysis:
         for p in Packet_list:
             self.IPList.add(p.ip_src)
             self.IPList.add(p.ip_dest)
-        self.IPList = sorted(list(self.IPList), key=lambda ip: list(map(int, ip.split('.'))))
+        self.IPList = sorted( list(self.IPList), 
+                             key=lambda ip: list(map(int, ip.split('.'))) )
     
-
     # Получение общих портов относительно текущего IP-адреса
     def get_common_ports(self, curIP):
         ports = set()
@@ -48,7 +49,6 @@ class TrafficAnalysis:
                 ports.add(pkt.port_src)
                 ports.add(pkt.port_dest)
         return sorted(list(ports))
-
 
     # Вывод пар (число, IP-адрес/порт) для
     # предоставления выбора IP-адреса/порта
@@ -70,7 +70,6 @@ class TrafficAnalysis:
             num += 1
         print('')
 
-
     # Обработка общих данных
     def start_to_analyse(self):
         if Packet_list == []:
@@ -78,9 +77,7 @@ class TrafficAnalysis:
             return
         self.get_common_data()
         si = SessionInitialization(False, False)
-        print(f'Sessions len = {len(Session_list)}:')
         si.clear_unwanted_sessions()
-        print(f'After Sessions len = {len(Session_list)}:')
         si.print_inf_about_sessions()
         strt = Packet_list[0].timePacket
         fin = Packet_list[-1].timePacket

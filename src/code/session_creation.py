@@ -9,51 +9,43 @@ Session_list = []
 
 init(autoreset=True)
 
-
 # Класс, содержащий информацию о каждой активной сессии
 class Session:
 
     def __init__(self, strt_time, ips, ports) -> None:
-        self.strt_time = strt_time
-        self.ips = ips
-        self.stateActive = True
-        self.forceFin = False
-        self.isRDP = False
-        self.ports = ports
-        self.prevTimePkt = None
-        self.lastTimePkt = None
-        self.totalTime = None
-        self.intervalsList = []
-        # Для подсчета количества/размера пакетов
-        self.cntPktSrcIP1 = 0
-        self.cntPktDestIP1 = 0
-        self.pktSizeDestIP1 = []
-        self.pktSizeDestIP2 = []
-        # Для подсчета флагов PSH        
-        self.cntPSHDestIP1 = 0
-        self.cntPSHDestIP2 = 0
-        # Для подсчета флагов ACK
-        self.cntACKDestIP1 = 0
-        self.cntACKDestIP2 = 0
-        self.cntACKSrcIP1 = 0
-        # Для подсчета всего TCP-трафика
-        self.cntPktTCPDestIP1 = 0
-        self.cntPktTCPDestIP2 = 0
-        # Для подсчета флагов SYN, FIN, RST
-        self.cntSYNSrc = 0
-        self.cntSYNDest = 0
-        self.cntFINSrc = 0
-        self.cntFINDest = 0
-        self.cntRSTSrc = 0
-        self.cntRSTDest = 0
-        
-        self.winSizeList = []
-        self.rdpProb = []
-        self.cntTr = 0
-        self.cntPktUDP = 0
-        self.cntPkt = 0
-        self.CNT = 0
+            self.strt_time = strt_time
+            self.ips = ips
+            self.ports = ports
+            self.stateActive = True
+            self.forceFin = False
+            self.isRDP = False
 
+            self.prevTimePkt = None
+            self.lastTimePkt = None
+            self.totalTime = None
+            self.intervalsList = []
+
+            # Для подсчета количества/размера пакетов
+            self.cntPktSrcIP1 = self.cntPktDestIP1 = 0
+            self.pktSizeDestIP1 = []
+            self.pktSizeDestIP2 = []
+
+            # Для подсчета флагов PSH
+            self.cntPSHDestIP1 = self.cntPSHDestIP2 = 0
+
+            # Для подсчета флагов ACK
+            self.cntACKDestIP1 = self.cntACKDestIP2 = self.cntACKSrcIP1 = 0
+
+            # Для подсчета всего TCP-трафика
+            self.cntPktTCPDestIP1 = self.cntPktTCPDestIP2 = 0
+
+            # Для подсчета флагов SYN, FIN, RST
+            self.cntSYNSrc = self.cntSYNDest = self.cntFINSrc = 0
+            self.cntFINDest = self.cntRSTSrc = self.cntRSTDest = 0
+
+            self.cntTr = self.CNT = self.cntPkt = self.cntPktUDP =  0
+            self.winSizeList = []
+            self.rdpProb = []
 
     # Сбор данных о сессии, извлекаемых из пакетов
     def update_data(self, pkt):
@@ -109,33 +101,24 @@ class Session:
         self.cntPkt += 1
         self.CNT += 1
 
-
     # Обнуление накопленных данных после предсказания
     def clean_all_parameters(self):
+        # Очистка временных данных
         self.prevTimePkt = None
         self.intervalsList.clear()
-        self.cntPktSrcIP1 = 0
-        self.cntPktDestIP1 = 0
+        
+        # Сброс счетчиков и списков
+        self.cntPktSrcIP1 = self.cntPktDestIP1 = 0
         self.pktSizeDestIP1.clear()
         self.pktSizeDestIP2.clear()
-        self.cntPSHDestIP1 = 0
-        self.cntPSHDestIP2 = 0
-        self.cntACKDestIP1 = 0
-        self.cntACKDestIP2 = 0
-        self.cntACKSrcIP1 = 0
-        self.cntPktTCPDestIP1 = 0
-        self.cntPktTCPDestIP2 = 0
-        self.cntSYNSrc = 0
-        self.cntSYNDest = 0
-        self.cntFINSrc = 0
-        self.cntFINDest = 0
-        self.cntRSTSrc = 0
-        self.cntRSTDest = 0
+        self.cntPSHDestIP1 = self.cntPSHDestIP2 = 0
+        self.cntACKDestIP1 = self.cntACKDestIP2 = self.cntACKSrcIP1 = 0
+        self.cntPktTCPDestIP1 = self.cntPktTCPDestIP2 = 0
+        self.cntSYNSrc = self.cntSYNDest = self.cntFINSrc = 0
+        self.cntFINDest = self.cntRSTSrc = self.cntRSTDest = 0
         
         self.winSizeList.clear()
-        self.cntPktUDP = 0
-        self.cntPkt = 0
-
+        self.cntPktUDP = self.cntPkt = 0
 
     # Получение входного вектора x_t
     def get_result(self):
@@ -212,8 +195,10 @@ class Session:
         # Вычисление разности числа исходящих и входящих ACK-флагов IP1
         result.append(abs(self.cntACKDestIP1 - self.cntACKSrcIP1))
         # Вычисление отношения количества флагов SYN, FIN, RST
-        result.append(ratio_calc(self.cntSYNSrc + 1, self.cntFINSrc + self.cntRSTSrc + 1))
-        result.append(ratio_calc(self.cntSYNDest + 1, self.cntFINDest + self.cntRSTDest + 1))
+        result.append(ratio_calc( self.cntSYNSrc + 1
+                                , self.cntFINSrc + self.cntRSTSrc + 1 ))
+        result.append(ratio_calc( self.cntSYNDest + 1
+                                , self.cntFINDest + self.cntRSTDest + 1 ))
         # Вычисление среднего размера экрана
         l = len(self.winSizeList)
         if l != 0:
@@ -235,7 +220,6 @@ class Session:
         self.clean_all_parameters()
         return result
 
-
     # Оценка результата предсказания
     def rdp_prob_check(self, val0, val1):
         if val0 > 0.5 and val1 < 0.5:
@@ -251,7 +235,6 @@ class Session:
 # Обработка получаемых пакетов
 class SessionInitialization:
 
-
     def __init__(self, fl_find_rdp=False, fl_train=True) -> None:
         self.cur_ports = set()
         self.curTime = None
@@ -266,7 +249,6 @@ class SessionInitialization:
     def add_start_time(self, strt):
         self.curTime = strt + 15
 
-
     # Запись входных векторов в файл
     def write_data_to_file(self, filename='x_input.log'):
         with open(filename, 'a+') as f:
@@ -276,7 +258,6 @@ class SessionInitialization:
                 for el in row:
                     f.write(f'{el},')
                 f.write('!\n')
-
 
     # Загрузка модели для выявления RDP сессий
     def load_LSTM_model(self, filename='model.keras'):
@@ -289,7 +270,6 @@ class SessionInitialization:
         else:
             print('\nМодель успешно загружена!')
             return True
-
     
     # Выполнение предсказания по каждой активной сессии
     def get_prediction(self, indexes):
@@ -298,7 +278,6 @@ class SessionInitialization:
         for i in indexes:
             Session_list[i].rdp_prob_check(pred[0, j, 0], pred[0, j, 1])
             j += 1
-
 
     # Обработка режимов работы с моделью
     def packet_preparation(self):
@@ -315,8 +294,6 @@ class SessionInitialization:
                     self.x_input.append(vec)
             self.x_input = np.array(self.x_input)
             self.x_input = np.expand_dims(self.x_input, axis=0)
-            # if len(self.x_input.shape) != 3:
-            #     return
             self.get_prediction(ids)
         # Режим обучения
         elif self.train_mode:
@@ -329,7 +306,6 @@ class SessionInitialization:
             for s in Session_list:
                 vec = s.get_result()
 
-
     # Классификация пакетов по сессиям
     def find_session_location(self, pkt) -> bool:
         global Session_list
@@ -339,7 +315,8 @@ class SessionInitialization:
             self.curTime += 15
         for s in Session_list:
             if s.stateActive and pkt.ip_src in s.ips and pkt.ip_dest in s.ips:
-                if (s.ports[1] is None and (pkt.port_src == s.ports[0] or pkt.port_dest == s.ports[0])) or \
+                if (s.ports[1] is None and ( pkt.port_src == s.ports[0] or \
+                                             pkt.port_dest == s.ports[0]) ) or \
                    (pkt.port_src in s.ports and pkt.port_dest in s.ports):
                     isNewSession = False
                     s.update_data(pkt)
@@ -360,66 +337,58 @@ class SessionInitialization:
         if isNewSession:
             if pkt.protoType == 'TCP' and pkt.fl_syn == '1' and pkt.fl_ack == '0':
                 self.cur_ports.add(pkt.port_dest)
-                Session_list.append(Session(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_dest, None)))
+                Session_list.append(Session( pkt.timePacket
+                                           , (pkt.ip_src, pkt.ip_dest)
+                                           , (pkt.port_dest, None)))
             else:
-                Session_list.append(Session(pkt.timePacket, (pkt.ip_src, pkt.ip_dest), (pkt.port_src, pkt.port_dest)))
+                Session_list.append(Session( pkt.timePacket
+                                           , (pkt.ip_src, pkt.ip_dest)
+                                           , (pkt.port_src, pkt.port_dest)))
             Session_list[-1].update_data(pkt)
         return False
-
 
     # Вывод информации о перехваченных пакетах
     def print_packet_information(self, pkt, pred_res):
         if self.findRDP and not pred_res:
             return
-        print( f'{self.line}Пакет No{pkt.numPacket}{self.line}\n'
-             , 'Время перехвата: '
-             , time.strftime( '%m:%d:%Y %H:%M:%S'
-                            , time.localtime(pkt.timePacket) ) + '\n'
-             , f'Протокол: {pkt.protoType}\n'
-             , f'MAC-адрес отправителя: {pkt.mac_src}\n'
-             , f'MAC-адрес получателя: {pkt.mac_dest}\n'
-             , f'Отправитель: {pkt.ip_src}:{pkt.port_src}\n'
-             , f'Получатель: {pkt.ip_dest}:{pkt.port_dest}' )
+        packet_info = [
+            f'{self.line}Пакет No{pkt.numPacket}{self.line}',
+            f'Время перехвата: {time.strftime("%m:%d:%Y %H:%M:%S", time.localtime(pkt.timePacket))}',
+            f'Протокол: {pkt.protoType}',
+            f'MAC-адрес отправителя: {pkt.mac_src}',
+            f'MAC-адрес получателя: {pkt.mac_dest}',
+            f'Отправитель: {pkt.ip_src}:{pkt.port_src}',
+            f'Получатель: {pkt.ip_dest}:{pkt.port_dest}'
+        ]
         if pkt.protoType == 'TCP':
-            print( f' Порядковый номер: {pkt.seq}; Номер подтверждения: {pkt.ack}\n' +
-                   f' SYN:{pkt.fl_syn}; ACK:{pkt.fl_ack}; PSH:{pkt.fl_psh}; ' +
-                   f'RST:{pkt.fl_rst}; FIN:{pkt.fl_fin}\n')
+            tcp_flags = f'SYN:{pkt.fl_syn}; ACK:{pkt.fl_ack}; PSH:{pkt.fl_psh}; RST:{pkt.fl_rst}; FIN:{pkt.fl_fin}'
+            packet_info.append(f'Порядковый номер: {pkt.seq}; Номер подтверждения: {pkt.ack}')
+            packet_info.append(tcp_flags)
+        print("\n".join(packet_info))
         if self.findRDP and pred_res:
             print(f'{self.line} Обнаружена RDP-сессия! {self.line}')
-
 
     # Обработка значений списка Session_list
     def clear_unwanted_sessions(self):
         global Session_list
-        n = len(Session_list)
-        ids = []
-        for i in range(n):
-            if Session_list[i].CNT < 20 or Session_list[i].totalTime < 10:
-                ids.append(i)
-        tmp = Session_list.copy()
-        Session_list.clear()
-        for i in range(n):
-            if i in ids:
-                continue
-            Session_list.append(tmp[i])
-
+        Session_list = [
+            session for session in Session_list
+            if session.CNT >= 20 and session.totalTime >= 10
+        ]
 
     # Вывод информации о сессиях
     def print_inf_about_sessions(self):
-        cnt = 1
         print(f'\nБыло перехвачено {len(Session_list)} сессии(-й)')
-        for s in Session_list:
-            print( f'\nИнформация о сессии #{cnt}:\n' +
-                   f'IP-адреса: {s.ips}')
-            if s.ports[1] is None:
-                print(f'Порт подключения: {s.ports[0]}')
-            else:
-                print(f'Порты подключения: {s.ports}')
-            print( f'Время перехвата первого пакета:'
-                 , time.strftime('%d.%m.%Y г. %H:%M:%S', time.localtime(s.strt_time)) )
-            print(f'Количество перехваченных пакетов: {s.CNT}')
-            print( f'Общее время перехвата: {s.totalTime}')
+        for cnt, s in enumerate(Session_list, start=1):
+            session_info = [
+                f'\nИнформация о сессии #{cnt}:',
+                f'IP-адреса: {s.ips}',
+                f'Порт подключения: {s.ports[0]}' if s.ports[1] is None else f'Порты подключения: {s.ports}',
+                f'Время перехвата первого пакета: {time.strftime("%d.%m.%Y г. %H:%M:%S", time.localtime(s.strt_time))}',
+                f'Количество перехваченных пакетов: {s.CNT}',
+                f'Общее время перехвата: {s.totalTime}'
+            ]
             if s.isRDP:
-                print(Back.GREEN + Fore.BLACK + f'Найдена RDP-сессия!!!')
-            cnt += 1
+                session_info.append(Back.GREEN + Fore.BLACK + 'Найдена RDP-сессия!!!')
+            print("\n".join(session_info))
         print(f'{self.line}{self.line}\n')
