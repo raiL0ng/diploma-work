@@ -425,7 +425,7 @@
 {0cm}{2ex plus 1ex minus .2ex}{.4ex plus.2ex}
 
 \titleformat{\subsubsection}[block]
-{\hspace{1.25cm}\normalfont}
+{\hspace{1.25cm}\normalfont\bfseries}
 {\thesubsubsection}{1ex}{}
 \titlespacing{\subsubsection}
 {0cm}{2ex plus 1ex minus .2ex}{.4ex plus.2ex}
