@@ -18,18 +18,28 @@ class ModelInit:
         self.confusions = {"TP" : 0, "FP" : 0, "TN" : 0, "FN" : 0}
 
 
-    # Определение модели LSTM
     def define_model(self):
         self.model = Sequential()
-        # Входной слой LSTM
-        self.model.add(LSTM(units=64, return_sequences=True))
-        # Полносвязный слой для классификации
+        self.model.add(LSTM(units=64, return_sequences=True, dropout=0.2))
+        self.model.add(LSTM(units=32, return_sequences=True, dropout=0.2))
         self.model.add(Dense(units=32, activation='relu'))
-        # Выходной слой: два нейрона для предсказания классов [1, 0] (RDP) и [0, 1] (не RDP)
         self.model.add(Dense(units=2, activation='softmax'))
-        # Компиляция модели
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        print('\nМодель LSTM определена успешно')
+        self.model.compile(optimizer='RMSprop', loss='categorical_crossentropy', metrics=['accuracy'])
+        print('\nУлучшенная модель LSTM определена успешно')
+
+
+    # # Определение модели LSTM
+    # def define_model(self):
+    #     self.model = Sequential()
+    #     # Входной слой LSTM
+    #     self.model.add(LSTM(units=64, return_sequences=True))
+    #     # Полносвязный слой для классификации
+    #     self.model.add(Dense(units=32, activation='relu'))
+    #     # Выходной слой: два нейрона для предсказания классов [1, 0] (RDP) и [0, 1] (не RDP)
+    #     self.model.add(Dense(units=2, activation='softmax'))
+    #     # Компиляция модели
+    #     self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    #     print('\nМодель LSTM определена успешно')
 
 
     # Запись входных векторов в файл
@@ -44,8 +54,9 @@ class ModelInit:
 
 
     # Метод для выполнения автоматической разметки данных
+    # (используется только в случае обучения модели)
     def is_rdp_check(self, row):
-        ports = ['3389']
+        ports = ['3389', '4899', '5931', '53389']
         for p in ports:
             if '(' + p in row or p + ')' in row:
                 return True
@@ -70,7 +81,6 @@ class ModelInit:
                     cur_ys.clear()
                 elif ':' in row:
                     if self.is_rdp_check(row):
-                    # if '(3389' in row or '3389)' in row or '(4899' in row or '4899)' in row:
                         cur_ys.append([1, 0])
                     else:
                         cur_ys.append([0, 1])
@@ -153,7 +163,7 @@ class ModelInit:
             padding='post',
             value=[0, 1]
         )
-        # Создаем раннюю остановку с оптимальными параметрами
+
         early_stopping = EarlyStopping(
             monitor='val_loss',
             patience=5,
@@ -280,7 +290,8 @@ def main():
                     c.save_model(filename)
             elif bl == '1':
                 c = ModelInit()
-                filename = input('Название файла для модели: ')
+                filename = input('Название файла для модели: (ПОМЕНЯЙ!!!)')
+                filename='newlstm.keras'
                 if filename != '':
                     fl = c.load_LSTM_model(filename)
                 else:
